@@ -43,6 +43,18 @@ function connectDB($config) {
 
 try {
     $action = isset($_GET['action']) ? $_GET['action'] : '';
+    $yearFilter = isset($_GET['year']) ? $_GET['year'] : '';
+
+    $yearCond = "";
+    $vYearCond = "";
+    $whereAndYear = "";
+
+    if ($yearFilter && $yearFilter !== 'Semua') {
+        $y = intval($yearFilter);
+        $yearCond = "WHERE YEAR(created_at) = $y";
+        $vYearCond = "WHERE YEAR(v.created_at) = $y";
+        $whereAndYear = "AND YEAR(v.created_at) = $y";
+    }
 
     // Action: test / ping (Tanpa perlu DB sambung)
     if ($action === 'ping' || $action === 'test') {
@@ -105,9 +117,10 @@ try {
             break;
 
         case 'get_summary_stats':
-            $stmt = $conn->query("SELECT COUNT(*) as totalVehicles, IFNULL(SUM(duty_rm), 0) as taxExact FROM vehicle_inventory");
+            $stmt = $conn->query("SELECT COUNT(*) as totalVehicles, IFNULL(SUM(duty_rm), 0) as taxExact FROM vehicle_inventory $yearCond");
             $res = $stmt->fetch();
-            $compCount = $conn->query("SELECT COUNT(DISTINCT gbpekema_id) FROM vehicle_inventory WHERE gbpekema_id IS NOT NULL")->fetchColumn();
+            $compQuery = "SELECT COUNT(DISTINCT gbpekema_id) FROM vehicle_inventory " . ($yearCond ? "$yearCond AND gbpekema_id IS NOT NULL" : "WHERE gbpekema_id IS NOT NULL");
+            $compCount = $conn->query($compQuery)->fetchColumn();
             echo json_encode([
                 "status" => "success",
                 "totalVehicles" => number_format((int)$res['totalVehicles']),
@@ -119,22 +132,22 @@ try {
             break;
 
         case 'get_vehicles':
-            $stmt = $conn->query("SELECT v.lot_number as lot, IFNULL(g.nama, 'Tiada Syarikat') as company, v.chassis_number as chassis, v.color, DATE_FORMAT(v.`bond-in_date`, '%d/%m/%Y') as date, v.vehicle_model as model FROM vehicle_inventory v LEFT JOIN gbpekema g ON v.gbpekema_id = g.id ORDER BY v.created_at DESC LIMIT 100");
+            $stmt = $conn->query("SELECT v.lot_number as lot, IFNULL(g.nama, 'Tiada Syarikat') as company, v.chassis_number as chassis, v.color, DATE_FORMAT(v.`bond-in_date`, '%d/%m/%Y') as date, v.vehicle_model as model FROM vehicle_inventory v LEFT JOIN gbpekema g ON v.gbpekema_id = g.id $vYearCond ORDER BY v.created_at DESC LIMIT 100");
             echo json_encode($stmt->fetchAll());
             break;
 
         case 'get_dominance_data':
-            $stmt = $conn->query("SELECT IFNULL(g.nama, 'Tiada Syarikat') as name, COUNT(*) as value FROM vehicle_inventory v LEFT JOIN gbpekema g ON v.gbpekema_id = g.id GROUP BY v.gbpekema_id ORDER BY value DESC");
+            $stmt = $conn->query("SELECT IFNULL(g.nama, 'Tiada Syarikat') as name, COUNT(*) as value FROM vehicle_inventory v LEFT JOIN gbpekema g ON v.gbpekema_id = g.id $vYearCond GROUP BY v.gbpekema_id ORDER BY value DESC");
             echo json_encode($stmt->fetchAll());
             break;
 
         case 'get_activity_log':
-            $stmt = $conn->query("SELECT v.id, v.lot_number as vehicle, IFNULL(g.nama, 'Tiada Syarikat') as company, DATE_FORMAT(v.created_at, '%H:%i') as time, DATE_FORMAT(v.created_at, '%d/%m/%Y') as date FROM vehicle_inventory v LEFT JOIN gbpekema g ON v.gbpekema_id = g.id ORDER BY v.created_at DESC LIMIT 10");
+            $stmt = $conn->query("SELECT v.id, v.lot_number as vehicle, IFNULL(g.nama, 'Tiada Syarikat') as company, DATE_FORMAT(v.created_at, '%H:%i') as time, DATE_FORMAT(v.created_at, '%d/%m/%Y') as date FROM vehicle_inventory v LEFT JOIN gbpekema g ON v.gbpekema_id = g.id $vYearCond ORDER BY v.created_at DESC LIMIT 10");
             echo json_encode($stmt->fetchAll());
             break;
 
         case 'get_aging_data':
-            $stmt = $conn->query("SELECT v.lot_number as lot, IFNULL(g.nama, 'Tiada Syarikat') as company, v.`bond-in_date` as bond_in_date, DATEDIFF(CURDATE(), v.`bond-in_date`) as days FROM vehicle_inventory v LEFT JOIN gbpekema g ON v.gbpekema_id = g.id WHERE v.`bond-in_date` IS NOT NULL ORDER BY days DESC");
+            $stmt = $conn->query("SELECT v.lot_number as lot, IFNULL(g.nama, 'Tiada Syarikat') as company, v.`bond-in_date` as bond_in_date, DATEDIFF(CURDATE(), v.`bond-in_date`) as days FROM vehicle_inventory v LEFT JOIN gbpekema g ON v.gbpekema_id = g.id WHERE v.`bond-in_date` IS NOT NULL $whereAndYear ORDER BY days DESC");
             $records = $stmt->fetchAll();
             $summary = [
                 ['range' => '< 1 Bulan', 'total' => 0],
@@ -159,7 +172,7 @@ try {
             break;
 
         case 'get_tax_analysis':
-            $stmt = $conn->query("SELECT IFNULL(g.nama, 'Tiada Syarikat') as name, SUM(v.duty_rm) as tax, COUNT(*) as units FROM vehicle_inventory v LEFT JOIN gbpekema g ON v.gbpekema_id = g.id GROUP BY v.gbpekema_id ORDER BY tax DESC");
+            $stmt = $conn->query("SELECT IFNULL(g.nama, 'Tiada Syarikat') as name, SUM(v.duty_rm) as tax, COUNT(*) as units FROM vehicle_inventory v LEFT JOIN gbpekema g ON v.gbpekema_id = g.id $vYearCond GROUP BY v.gbpekema_id ORDER BY tax DESC");
             echo json_encode($stmt->fetchAll());
             break;
 

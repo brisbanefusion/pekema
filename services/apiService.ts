@@ -1,18 +1,23 @@
-const BASE_URL = 'https://kliacustoms.net/api.php'; 
+const BASE_URL = 'https://kliacustoms.net/api.php';
 
 export const apiStatus = {
   isLive: false,
   lastError: null as string | null,
   isChecking: false,
-  useSimulatedData: false
+  useSimulatedData: false,
+  activeYear: '2026'
 };
 
 const fetchWithFallback = async (action: string, fallback: any) => {
   if (apiStatus.useSimulatedData) return fallback;
 
-  const url = `${BASE_URL}?action=${action}&_t=${Date.now()}`;
+  let url = `${BASE_URL}?action=${action}&_t=${Date.now()}`;
+  if (apiStatus.activeYear !== 'Semua' && apiStatus.activeYear) {
+    url += `&year=${apiStatus.activeYear}`;
+  }
+
   apiStatus.isChecking = true;
-  
+
   try {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), 8000); // 8 saat timeout
@@ -38,7 +43,7 @@ const fetchWithFallback = async (action: string, fallback: any) => {
     if (msg.includes('fetch') || msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('aborted')) {
       msg = "Sambungan Disekat (SSL/CORS/Antibot). Sila sahkan (Trust) API anda.";
     }
-    
+
     apiStatus.isLive = false;
     apiStatus.lastError = msg;
     console.error("API Error [action=" + action + "]:", msg);
@@ -50,6 +55,7 @@ const fetchWithFallback = async (action: string, fallback: any) => {
 
 export const apiService = {
   setMode: (simulated: boolean) => { apiStatus.useSimulatedData = simulated; },
+  setYear: (year: string) => { apiStatus.activeYear = year; },
   getApiUrl: () => BASE_URL,
   ping: async () => fetchWithFallback('ping', { status: 'offline' }),
   getSummaryStats: async () => fetchWithFallback('get_summary_stats', { totalVehicles: "...", taxAmount: "..." }),

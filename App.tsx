@@ -33,7 +33,14 @@ const App: React.FC = () => {
   const [isLive, setIsLive] = useState(apiStatus.isLive);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSimulated, setIsSimulated] = useState(apiStatus.useSimulatedData);
+  const [activeYear, setActiveYear] = useState<string>(apiStatus.activeYear);
   const [whitelist, setWhitelist] = useState<string[]>([SUPERADMIN_EMAIL]);
+
+  const handleYearChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newYear = e.target.value;
+    apiService.setYear(newYear);
+    setActiveYear(newYear);
+  };
 
   const checkConnection = useCallback(async () => {
     if (isSimulated) return;
@@ -119,7 +126,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen pb-20 bg-[#f8fafc] print:min-h-0 print:bg-white print:pb-0">
+    <div className="min-h-screen pb-20 bg-[#f8fafc]">
       <SidebarMenu isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} onSelectTab={(label) => {
         // Fix: Map all sidebar menu labels to their corresponding DashboardTab values
         const map: any = {
@@ -136,13 +143,22 @@ const App: React.FC = () => {
         setIsSidebarOpen(false);
       }} activeTab={activeTab} onLogout={() => setIsAuthenticated(false)} userEmail={userEmail} isSuperAdmin={userEmail === SUPERADMIN_EMAIL} />
 
-      <header className="fixed top-0 w-full z-40 px-6 py-4 print:hidden">
+      <header className="fixed top-0 w-full z-40 px-6 py-4">
         <div className="max-w-7xl mx-auto bg-slate-900/90 backdrop-blur-md text-white rounded-full flex items-center justify-between px-6 py-2 shadow-xl border border-white/10">
           <div className="flex items-center gap-2">
             <Database className="w-5 h-5 text-blue-500" />
             <h1 className="font-bold text-sm">GBPekema</h1>
           </div>
           <div className="flex items-center gap-4">
+            <select
+              value={activeYear}
+              onChange={handleYearChange}
+              className="bg-slate-800 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full border-none outline-none cursor-pointer hover:bg-slate-700 transition-colors"
+            >
+              <option value="2025">2025</option>
+              <option value="2026">2026</option>
+              <option value="Semua">Semua</option>
+            </select>
             <div className="bg-slate-800 p-1 rounded-full flex text-[10px] font-black uppercase">
               <button onClick={() => { setIsSimulated(false); apiService.setMode(false); checkConnection(); }} className={`px-3 py-1 rounded-full transition-all ${!isSimulated ? 'bg-green-600 text-white shadow-lg' : 'text-slate-500 hover:text-white/10'}`}>Live</button>
               <button onClick={() => { setIsSimulated(true); apiService.setMode(true); }} className={`px-3 py-1 rounded-full transition-all ${isSimulated ? 'bg-amber-500 text-white shadow-lg' : 'text-slate-500 hover:text-white/10'}`}>Demo</button>
@@ -152,7 +168,7 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 pt-28 print:pt-0 print:px-0">
+      <main className="max-w-7xl mx-auto px-6 pt-28">
         {errorMessage && !isSimulated && (
           <div className="mb-8 p-8 bg-rose-50 border-2 border-rose-200 rounded-[2.5rem] shadow-xl animate-in slide-in-from-top-4 duration-500">
             <div className="flex flex-col md:flex-row gap-6 items-center md:items-start">
@@ -162,7 +178,7 @@ const App: React.FC = () => {
               <div className="flex-1 text-center md:text-left">
                 <h3 className="text-xl font-black text-rose-800 uppercase tracking-tight">Sekatan Sambungan (SSL/Antibot)</h3>
                 <p className="text-xs text-rose-700 font-bold mt-2 leading-relaxed opacity-80">
-                  Pelayan kliacustoms.net memerlukan anda mengesahkan identiti pelayar secara manual. Sila ikuti langkah di bawah:
+                  Pelayan InfinityFree memerlukan anda mengesahkan identiti pelayar secara manual. Sila ikuti langkah di bawah:
                 </p>
                 <div className="mt-5 space-y-3">
                   <div className="flex items-start gap-3 text-[11px] font-bold text-rose-600 bg-white/40 p-3 rounded-xl border border-rose-200/50">
@@ -187,25 +203,25 @@ const App: React.FC = () => {
           </div>
         )}
 
-        <div className="flex justify-between items-end mb-10 print:mb-4">
+        <div className="flex justify-between items-end mb-10">
           <h1 className="text-4xl font-black text-slate-900 uppercase italic tracking-tighter">
             {activeTab} <br /> <span className="text-indigo-600">Intelligence</span>
           </h1>
-          <button onClick={() => setIsIntelligenceOpen(true)} className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 shadow-lg hover:scale-105 transition-all active:scale-95 print:hidden">
+          <button onClick={() => setIsIntelligenceOpen(true)} className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 shadow-lg hover:scale-105 transition-all active:scale-95">
             <Sparkles className="w-4 h-4" /> AI Insights
           </button>
         </div>
 
         {/* Fix: Implement conditional rendering for all dashboard views */}
-        {activeTab === DashboardTab.RINGKASAN && <SummaryView />}
-        {activeTab === DashboardTab.KENDERAAN && <VehicleListView onSelectLot={(lot) => { setSelectedLot(lot); setActiveTab(DashboardTab.REKOD_DETAIL); }} onAddNew={() => setActiveTab(DashboardTab.TAMBAH_KENDERAAN)} />}
-        {activeTab === DashboardTab.REKOD_DETAIL && selectedLot && <VehicleDetailView lot={selectedLot} onBack={() => setActiveTab(DashboardTab.KENDERAAN)} />}
-        {activeTab === DashboardTab.TAMBAH_KENDERAAN && <AddVehicleView onBack={() => setActiveTab(DashboardTab.KENDERAAN)} />}
-        {activeTab === DashboardTab.INSIGHTS && <InsightsView />}
-        {activeTab === DashboardTab.AGING && <AgingAnalysisView />}
-        {activeTab === DashboardTab.SYARIKAT && <CompanyListView />}
-        {activeTab === DashboardTab.ANALISA && <ReportGenerationView />}
-        {activeTab === DashboardTab.ADMIN && <AdminView whitelist={whitelist} onAdd={handleAddToWhitelist} onRemove={handleRemoveFromWhitelist} />}
+        {activeTab === DashboardTab.RINGKASAN && <SummaryView key={`summary-${activeYear}`} />}
+        {activeTab === DashboardTab.KENDERAAN && <VehicleListView key={`vehicles-${activeYear}`} onSelectLot={(lot) => { setSelectedLot(lot); setActiveTab(DashboardTab.REKOD_DETAIL); }} onAddNew={() => setActiveTab(DashboardTab.TAMBAH_KENDERAAN)} />}
+        {activeTab === DashboardTab.REKOD_DETAIL && selectedLot && <VehicleDetailView key={`detail-${activeYear}-${selectedLot}`} lot={selectedLot} onBack={() => setActiveTab(DashboardTab.KENDERAAN)} />}
+        {activeTab === DashboardTab.TAMBAH_KENDERAAN && <AddVehicleView key={`add-${activeYear}`} onBack={() => setActiveTab(DashboardTab.KENDERAAN)} />}
+        {activeTab === DashboardTab.INSIGHTS && <InsightsView key={`insights-${activeYear}`} />}
+        {activeTab === DashboardTab.AGING && <AgingAnalysisView key={`aging-${activeYear}`} />}
+        {activeTab === DashboardTab.SYARIKAT && <CompanyListView key={`company-${activeYear}`} />}
+        {activeTab === DashboardTab.ANALISA && <ReportGenerationView key={`report-${activeYear}`} />}
+        {activeTab === DashboardTab.ADMIN && <AdminView key="admin" whitelist={whitelist} onAdd={handleAddToWhitelist} onRemove={handleRemoveFromWhitelist} />}
       </main>
 
       <IntelligenceModal isOpen={isIntelligenceOpen} onClose={() => setIsIntelligenceOpen(false)} />
