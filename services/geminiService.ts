@@ -1,10 +1,9 @@
-
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export const getDashboardInsights = async (dataContext: any) => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const model = 'gemini-3-pro-preview';
-  
+  const genAI = new GoogleGenerativeAI(process.env.API_KEY || '');
+  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+
   const prompt = `
     Context: Warehouse management dashboard for PEKEMA (vehicle importers).
     Data: ${JSON.stringify(dataContext)}
@@ -16,14 +15,8 @@ export const getDashboardInsights = async (dataContext: any) => {
   `;
 
   try {
-    const response = await ai.models.generateContent({
-      model,
-      contents: prompt,
-      config: {
-        thinkingConfig: { thinkingBudget: 2000 }
-      }
-    });
-    return response.text;
+    const response = await model.generateContent(prompt);
+    return response.response.text();
   } catch (error) {
     console.error("AI Insights Error:", error);
     return "Maaf, sistem sedang sibuk. Sila cuba sebentar lagi untuk analisis AI.";
