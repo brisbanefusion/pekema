@@ -22,19 +22,21 @@ export const IntelligenceModal: React.FC<Props> = ({ isOpen, onClose }) => {
   const handleGenerate = async () => {
     setLoading(true);
     try {
-      const [stats, dominance] = await Promise.all([
+      const [stats, dominance, taxAnalysis] = await Promise.all([
         apiService.getSummaryStats(),
-        apiService.getDominanceData()
+        apiService.getDominanceData(),
+        apiService.getTaxAnalysis()
       ]);
-      
+
       setDataMode(apiStatus.isLive ? 'live' : 'cached');
-      
+
       const dataContext = {
         stats: stats,
         dominance: dominance,
+        taxAnalysis: taxAnalysis,
         mode: apiStatus.isLive ? 'LIVE DATABASE' : 'CACHED REFRESH'
       };
-      
+
       const result = await getDashboardInsights(dataContext);
       setInsight(result || '');
     } catch (err) {
@@ -65,7 +67,7 @@ export const IntelligenceModal: React.FC<Props> = ({ isOpen, onClose }) => {
             <X className="w-6 h-6" />
           </button>
         </div>
-        
+
         <div className="p-8 overflow-y-auto flex-1 bg-slate-50/50">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20 gap-6">
@@ -74,7 +76,7 @@ export const IntelligenceModal: React.FC<Props> = ({ isOpen, onClose }) => {
                 <Sparkles className="w-6 h-6 text-indigo-400 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
               </div>
               <p className="text-slate-500 font-bold animate-pulse tracking-wide text-center">
-                Menganalisa data pangkalan data...<br/>
+                Menganalisa data pangkalan data...<br />
                 <span className="text-[10px] uppercase tracking-widest text-slate-400">GBPekema AI Core v2.5</span>
               </p>
             </div>
@@ -93,7 +95,7 @@ export const IntelligenceModal: React.FC<Props> = ({ isOpen, onClose }) => {
         </div>
 
         <div className="p-6 border-t bg-white rounded-b-3xl">
-          <button 
+          <button
             onClick={handleGenerate}
             disabled={loading}
             className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-indigo-700 hover:shadow-xl hover:shadow-indigo-600/20 transition-all disabled:bg-slate-300 disabled:shadow-none active:scale-[0.98]"
