@@ -1,0 +1,5 @@
+{
+  "name": "GBPekema Command Center",
+  "description": "An AI-powered intelligence dashboard for PEKEMA vehicle records, featuring real-time analytics, tax tracking, and predictive insights.",
+  "requestFramePermissions": []
+}
