@@ -5,7 +5,7 @@
 
 ob_start();
 
-// 1. Konfigurasi CORS Paling Terbuka (Penting untuk Vercel -> InfinityFree)
+// 1. Konfigurasi CORS Paling Terbuka (Penting untuk Vercel -> kliacustoms.net)
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Origin, Accept");
@@ -84,9 +84,13 @@ try {
                 bond_in_date DATE,
                 total_tax DECIMAL(15,2) DEFAULT 0.00,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB;
+            CREATE TABLE IF NOT EXISTS whitelist_users (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                email VARCHAR(255) NOT NULL UNIQUE
             ) ENGINE=InnoDB;";
             $conn->exec($sql);
-            echo json_encode(["status" => "success", "message" => "Jadual 'vehicles' sedia digunakan."]);
+            echo json_encode(["status" => "success", "message" => "Jadual sedia digunakan."]);
             break;
 
         case 'debug_database':
@@ -122,6 +126,70 @@ try {
         case 'get_dominance_data':
             $stmt = $conn->query("SELECT company_name as name, COUNT(*) as value FROM vehicles GROUP BY company_name ORDER BY value DESC");
             echo json_encode($stmt->fetchAll());
+            break;
+
+        case 'get_activity_log':
+            $stmt = $conn->query("SELECT id, lot_no as vehicle, company_name as company, DATE_FORMAT(created_at, '%H:%i') as time, DATE_FORMAT(created_at, '%d/%m/%Y') as date FROM vehicles ORDER BY created_at DESC LIMIT 10");
+            echo json_encode($stmt->fetchAll());
+            break;
+
+        case 'get_aging_data':
+            $stmt = $conn->query("SELECT lot_no as lot, company_name as company, bond_in_date, DATEDIFF(CURDATE(), bond_in_date) as days FROM vehicles WHERE bond_in_date IS NOT NULL ORDER BY days DESC");
+            $records = $stmt->fetchAll();
+            $summary = [
+                ['range' => '< 1 Bulan', 'total' => 0],
+                ['range' => '1-3 Bulan', 'total' => 0],
+                ['range' => '> 3 Bulan', 'total' => 0]
+            ];
+            $formattedRecords = [];
+            foreach ($records as $r) {
+                $days = (int)$r['days'];
+                if ($days < 30) $summary[0]['total']++;
+                elseif ($days <= 90) $summary[1]['total']++;
+                else $summary[2]['total']++;
+                $months = floor($days / 30);
+                $duration = $months > 0 ? "$months Bulan" : "$days Hari";
+                $formattedRecords[] = [
+                    'lot' => $r['lot'],
+                    'company' => $r['company'],
+                    'duration' => $duration
+                ];
+            }
+            echo json_encode(["summary" => $summary, "records" => $formattedRecords]);
+            break;
+
+        case 'get_tax_analysis':
+            $stmt = $conn->query("SELECT company_name as name, SUM(total_tax) as tax, COUNT(*) as units FROM vehicles GROUP BY company_name ORDER BY tax DESC");
+            echo json_encode($stmt->fetchAll());
+            break;
+
+        case 'get_whitelist':
+            try {
+                $stmt = $conn->query("SELECT email FROM whitelist_users");
+                echo json_encode($stmt->fetchAll(PDO::FETCH_COLUMN));
+            } catch (Exception $e) { echo json_encode([]); }
+            break;
+
+        case 'add_to_whitelist':
+            $email = isset($_GET['email']) ? $_GET['email'] : '';
+            if ($email) {
+                try {
+                    $stmt = $conn->prepare("INSERT IGNORE INTO whitelist_users (email) VALUES (:email)");
+                    $stmt->execute(['email' => $email]);
+                } catch(Exception $e) {}
+            }
+            echo json_encode(["status" => "success"]);
+            break;
+
+        case 'remove_from_whitelist':
+            $email = isset($_GET['email']) ? $_GET['email'] : '';
+            if ($email) {
+                try {
+                    $stmt = $conn->prepare("DELETE FROM whitelist_users WHERE email = :email");
+                    $stmt->execute(['email' => $email]);
+                } catch(Exception $e) {}
+            }
+            echo json_encode(["status" => "success"]);
             break;
 
         default:
