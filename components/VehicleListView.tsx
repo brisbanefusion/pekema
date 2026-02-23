@@ -70,7 +70,7 @@ export const VehicleListView: React.FC<Props> = ({ onSelectLot, onAddNew }) => {
       </div>
 
       {/* Table Section */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden min-h-[400px] flex flex-col">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden min-h-[400px] print:min-h-0 print:border-none print:shadow-none print:overflow-visible flex flex-col">
         {loading ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-4 py-20">
             <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
@@ -78,7 +78,7 @@ export const VehicleListView: React.FC<Props> = ({ onSelectLot, onAddNew }) => {
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto print:overflow-visible">
               <table className="w-full text-left">
                 <thead>
                   <tr className="bg-[#eff6ff]">

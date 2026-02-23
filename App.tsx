@@ -119,7 +119,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen pb-20 bg-[#f8fafc]">
+    <div className="min-h-screen pb-20 bg-[#f8fafc] print:min-h-0 print:bg-white print:pb-0">
       <SidebarMenu isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} onSelectTab={(label) => {
         // Fix: Map all sidebar menu labels to their corresponding DashboardTab values
         const map: any = {
