@@ -136,7 +136,7 @@ const App: React.FC = () => {
         setIsSidebarOpen(false);
       }} activeTab={activeTab} onLogout={() => setIsAuthenticated(false)} userEmail={userEmail} isSuperAdmin={userEmail === SUPERADMIN_EMAIL} />
 
-      <header className="fixed top-0 w-full z-40 px-6 py-4">
+      <header className="fixed top-0 w-full z-40 px-6 py-4 print:hidden">
         <div className="max-w-7xl mx-auto bg-slate-900/90 backdrop-blur-md text-white rounded-full flex items-center justify-between px-6 py-2 shadow-xl border border-white/10">
           <div className="flex items-center gap-2">
             <Database className="w-5 h-5 text-blue-500" />
@@ -152,7 +152,7 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 pt-28">
+      <main className="max-w-7xl mx-auto px-6 pt-28 print:pt-0 print:px-0">
         {errorMessage && !isSimulated && (
           <div className="mb-8 p-8 bg-rose-50 border-2 border-rose-200 rounded-[2.5rem] shadow-xl animate-in slide-in-from-top-4 duration-500">
             <div className="flex flex-col md:flex-row gap-6 items-center md:items-start">
@@ -187,11 +187,11 @@ const App: React.FC = () => {
           </div>
         )}
 
-        <div className="flex justify-between items-end mb-10">
+        <div className="flex justify-between items-end mb-10 print:mb-4">
           <h1 className="text-4xl font-black text-slate-900 uppercase italic tracking-tighter">
             {activeTab} <br /> <span className="text-indigo-600">Intelligence</span>
           </h1>
-          <button onClick={() => setIsIntelligenceOpen(true)} className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 shadow-lg hover:scale-105 transition-all active:scale-95">
+          <button onClick={() => setIsIntelligenceOpen(true)} className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 shadow-lg hover:scale-105 transition-all active:scale-95 print:hidden">
             <Sparkles className="w-4 h-4" /> AI Insights
           </button>
         </div>

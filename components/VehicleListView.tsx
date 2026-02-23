@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, ChevronLeft, ChevronRight, MoreHorizontal, Loader2 } from 'lucide-react';
+import { Search, Plus, ChevronLeft, ChevronRight, MoreHorizontal, Loader2, Printer } from 'lucide-react';
 import { apiService } from '../services/apiService';
 
 interface Props {
@@ -30,16 +30,24 @@ export const VehicleListView: React.FC<Props> = ({ onSelectLot, onAddNew }) => {
           <h1 className="text-2xl font-black text-[#1e3a8a]">Senarai Kenderaan</h1>
           <p className="text-sm text-blue-500 font-medium">Paparan rekod inventori kenderaan terkini dari database.</p>
         </div>
-        <button 
-          onClick={onAddNew}
-          className="flex items-center gap-2 bg-[#2563eb] text-white px-6 py-2.5 rounded-lg font-bold text-sm shadow-md hover:bg-blue-700 transition-all"
-        >
-          <Plus className="w-4 h-4" /> Tambah Kenderaan
-        </button>
+        <div className="flex items-center gap-3 print:hidden">
+          <button
+            onClick={() => window.print()}
+            className="flex items-center gap-2 bg-slate-100 border border-slate-200 text-slate-700 px-6 py-2.5 rounded-lg font-bold text-sm shadow-sm hover:bg-slate-200 transition-all"
+          >
+            <Printer className="w-4 h-4" /> Cetak
+          </button>
+          <button
+            onClick={onAddNew}
+            className="flex items-center gap-2 bg-[#2563eb] text-white px-6 py-2.5 rounded-lg font-bold text-sm shadow-md hover:bg-blue-700 transition-all"
+          >
+            <Plus className="w-4 h-4" /> Tambah Kenderaan
+          </button>
+        </div>
       </div>
 
       {/* Filters Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 print:hidden">
         <div>
           <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Tapis ikut Syarikat</label>
           <select className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none">
@@ -52,9 +60,9 @@ export const VehicleListView: React.FC<Props> = ({ onSelectLot, onAddNew }) => {
           <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Carian Kata Kunci</label>
           <div className="relative">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input 
-              type="text" 
-              placeholder="Cari No. Lot, No. K8, No. Casis..." 
+            <input
+              type="text"
+              placeholder="Cari No. Lot, No. K8, No. Casis..."
               className="w-full bg-white border border-slate-200 rounded-lg pl-10 pr-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none"
             />
           </div>
@@ -98,7 +106,7 @@ export const VehicleListView: React.FC<Props> = ({ onSelectLot, onAddNew }) => {
             </div>
 
             {/* Pagination Section */}
-            <div className="px-6 py-6 border-t border-slate-50 mt-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="px-6 py-6 border-t border-slate-50 mt-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
               <p className="text-xs text-slate-500 font-medium">
                 Menunjukkan <span className="font-bold text-slate-900">{vehicles.length}</span> rekod aktif
               </p>
