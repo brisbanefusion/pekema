@@ -16,6 +16,7 @@ import { CompanyListView } from './components/CompanyListView.tsx';
 import { TaxAnalysisView } from './components/TaxAnalysisView.tsx';
 import { AgingAnalysisView } from './components/AgingAnalysisView.tsx';
 import { ReportGenerationView } from './components/ReportGenerationView.tsx';
+import { NetworkAnalysisView } from './components/NetworkAnalysisView.tsx';
 import { AddVehicleView } from './components/AddVehicleView.tsx';
 import { VehicleDetailView } from './components/VehicleDetailView.tsx';
 
@@ -137,6 +138,7 @@ const App: React.FC = () => {
           "Analisa Tempoh Gudang": DashboardTab.AGING,
           "Senarai Syarikat": DashboardTab.SYARIKAT,
           "Analisa Cukai": DashboardTab.CUKAI,
+          "Analisa Rangkaian": DashboardTab.RANGKAIAN,
           "Jana Laporan": DashboardTab.ANALISA,
           "Superadmin Panel": DashboardTab.ADMIN
         };
@@ -222,6 +224,7 @@ const App: React.FC = () => {
         {activeTab === DashboardTab.AGING && <AgingAnalysisView key={`aging-${activeYear}`} />}
         {activeTab === DashboardTab.SYARIKAT && <CompanyListView key={`company-${activeYear}`} />}
         {activeTab === DashboardTab.CUKAI && <TaxAnalysisView key={`cukai-${activeYear}`} />}
+        {activeTab === DashboardTab.RANGKAIAN && <NetworkAnalysisView key={`rangkaian-${activeYear}`} />}
         {activeTab === DashboardTab.ANALISA && <ReportGenerationView key={`report-${activeYear}`} />}
         {activeTab === DashboardTab.ADMIN && <AdminView key="admin" whitelist={whitelist} onAdd={handleAddToWhitelist} onRemove={handleRemoveFromWhitelist} />}
       </main>

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import {
-  X, LayoutDashboard, List, Plus, Scan, Zap, Hourglass, Building2, FileText, Power, Shield, Database, Radio, Eye, Mail, ShieldAlert, PieChart
+  X, LayoutDashboard, List, Plus, Scan, Zap, Hourglass, Building2, FileText, Power, Shield, Database, Radio, Eye, Mail, ShieldAlert, PieChart, Network
 } from 'lucide-react';
 import { DashboardTab } from '../types';
 import { apiStatus, apiService } from '../services/apiService';
@@ -143,6 +143,11 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({ isOpen, onClose, onSel
             icon={PieChart}
             label="Analisa Cukai"
             isActive={activeTab === DashboardTab.CUKAI}
+          />
+          <MenuItem
+            icon={Network}
+            label="Analisa Rangkaian"
+            isActive={activeTab === DashboardTab.RANGKAIAN}
           />
           <MenuItem
             icon={FileText}

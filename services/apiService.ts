@@ -64,6 +64,7 @@ export const apiService = {
   getActivityLog: async () => fetchWithFallback('get_activity_log', []),
   getAgingData: async () => fetchWithFallback('get_aging_data', { summary: [], records: [] }),
   getTaxAnalysis: async () => fetchWithFallback('get_tax_analysis', []),
+  getNetworkAnalysis: async () => fetchWithFallback('get_network_analysis', { nodes: [], links: [] }),
   getWhitelist: async () => fetchWithFallback('get_whitelist', []),
   addToWhitelist: async (email: string) => fetchWithFallback(`add_to_whitelist&email=${encodeURIComponent(email)}`, { status: 'success' }),
   removeFromWhitelist: async (email: string) => fetchWithFallback(`remove_from_whitelist&email=${encodeURIComponent(email)}`, { status: 'success' }),

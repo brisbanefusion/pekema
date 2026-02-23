@@ -30,6 +30,7 @@ export enum DashboardTab {
   KENDERAAN = 'Senarai Kenderaan',
   SYARIKAT = 'Senarai Syarikat',
   CUKAI = 'Analisa Cukai',
+  RANGKAIAN = 'Analisa Rangkaian',
   ANALISA = 'Jana Laporan',
   INSIGHTS = 'AI Deep Insights',
   AGING = 'Analisa Tempoh Gudang',

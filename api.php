@@ -176,6 +176,48 @@ try {
             echo json_encode($stmt->fetchAll());
             break;
 
+        case 'get_network_analysis':
+            $sql = "SELECT g.nama AS company, v.vehicle_model AS model, COUNT(v.id) AS value, SUM(v.duty_rm) as total_tax
+                    FROM vehicle_inventory v
+                    LEFT JOIN gbpekema g ON v.gbpekema_id = g.id
+                    $vYearCond " . ($vYearCond ? " AND " : " WHERE ") . " v.vehicle_model IS NOT NULL AND v.vehicle_model != '' 
+                    GROUP BY g.nama, v.vehicle_model";
+            $stmt = $conn->query($sql);
+            $records = $stmt->fetchAll();
+            
+            $links = [];
+            $nodes = [];
+            $node_ids = [];
+            
+            foreach ($records as $row) {
+                $comp = $row['company'] ?? 'Syarikat Tidak Diketahui';
+                $model = $row['model'];
+                $val = (int)$row['value'];
+                $tax = (float)$row['total_tax'];
+                
+                if (!isset($node_ids[$comp])) {
+                    $nodes[] = ['id' => $comp, 'group' => 'company', 'size' => 0, 'tax' => 0];
+                    $node_ids[$comp] = count($nodes) - 1;
+                }
+                if (!isset($node_ids[$model])) {
+                    $nodes[] = ['id' => $model, 'group' => 'model', 'size' => 0, 'tax' => 0];
+                    $node_ids[$model] = count($nodes) - 1;
+                }
+                
+                $nodes[$node_ids[$comp]]['size'] += $val;
+                $nodes[$node_ids[$comp]]['tax'] += $tax;
+                $nodes[$node_ids[$model]]['size'] += $val;
+                
+                $links[] = [
+                    'source' => $comp,
+                    'target' => $model,
+                    'value' => $val,
+                    'tax' => $tax
+                ];
+            }
+            echo json_encode(['nodes' => $nodes, 'links' => $links]);
+            break;
+
         case 'get_whitelist':
             try {
                 $stmt = $conn->query("SELECT email FROM whitelist_users");
