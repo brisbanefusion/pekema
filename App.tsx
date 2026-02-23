@@ -136,6 +136,7 @@ const App: React.FC = () => {
           "Analisa Pintar": DashboardTab.INSIGHTS,
           "Analisa Tempoh Gudang": DashboardTab.AGING,
           "Senarai Syarikat": DashboardTab.SYARIKAT,
+          "Analisa Cukai": DashboardTab.CUKAI,
           "Jana Laporan": DashboardTab.ANALISA,
           "Superadmin Panel": DashboardTab.ADMIN
         };
@@ -220,6 +221,7 @@ const App: React.FC = () => {
         {activeTab === DashboardTab.INSIGHTS && <InsightsView key={`insights-${activeYear}`} />}
         {activeTab === DashboardTab.AGING && <AgingAnalysisView key={`aging-${activeYear}`} />}
         {activeTab === DashboardTab.SYARIKAT && <CompanyListView key={`company-${activeYear}`} />}
+        {activeTab === DashboardTab.CUKAI && <TaxAnalysisView key={`cukai-${activeYear}`} />}
         {activeTab === DashboardTab.ANALISA && <ReportGenerationView key={`report-${activeYear}`} />}
         {activeTab === DashboardTab.ADMIN && <AdminView key="admin" whitelist={whitelist} onAdd={handleAddToWhitelist} onRemove={handleRemoveFromWhitelist} />}
       </main>

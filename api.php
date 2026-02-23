@@ -172,7 +172,7 @@ try {
             break;
 
         case 'get_tax_analysis':
-            $stmt = $conn->query("SELECT IFNULL(g.nama, 'Tiada Syarikat') as name, SUM(v.duty_rm) as tax, COUNT(*) as units FROM vehicle_inventory v LEFT JOIN gbpekema g ON v.gbpekema_id = g.id $vYearCond GROUP BY v.gbpekema_id ORDER BY tax DESC");
+            $stmt = $conn->query("SELECT IFNULL(g.nama, 'Tiada Syarikat') as name, IFNULL(g.negeri, '-') as negeri, SUM(v.duty_rm) as tax, COUNT(*) as units FROM vehicle_inventory v LEFT JOIN gbpekema g ON v.gbpekema_id = g.id $vYearCond GROUP BY v.gbpekema_id ORDER BY tax DESC");
             echo json_encode($stmt->fetchAll());
             break;
 
