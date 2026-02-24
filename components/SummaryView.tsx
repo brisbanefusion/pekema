@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  PieChart, Pie, Cell, ResponsiveContainer, Tooltip 
+import {
+  PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid
 } from 'recharts';
-import { 
+import {
   Car, Building2, Coins, Plus, Loader2, Warehouse, Activity, RefreshCw, Database, Cpu
 } from 'lucide-react';
 import { StatsCard } from './StatsCard.tsx';
@@ -24,7 +25,7 @@ export const SummaryView: React.FC = () => {
         apiService.getDominanceData(),
         apiService.getActivityLog()
       ]);
-      
+
       setStats(statsRes);
       setDominanceData(Array.isArray(dominanceRes) ? dominanceRes : []);
       setActivityLog(Array.isArray(activityRes) ? activityRes : []);
@@ -79,7 +80,7 @@ export const SummaryView: React.FC = () => {
             <RefreshCw className="w-3 h-3" /> Updated: {lastUpdated}
           </p>
         </div>
-        <button 
+        <button
           onClick={() => loadAllData(true)}
           className="text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:underline flex items-center gap-1"
         >
@@ -88,7 +89,7 @@ export const SummaryView: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-10">
-        <StatsCard 
+        <StatsCard
           title="Rekod Kenderaan"
           value={displayStats.totalVehicles}
           trend="+4.2%"
@@ -96,28 +97,28 @@ export const SummaryView: React.FC = () => {
           icon={<Car className="w-6 h-6 text-white" />}
           colorClass="bg-blue-600 shadow-lg shadow-blue-500/20"
         />
-        <StatsCard 
+        <StatsCard
           title="Unit Dalam Gudang"
           value={displayStats.activeUnits}
           subtitle="STOK AKTIF SEMASA"
           icon={<Warehouse className="w-6 h-6 text-white" />}
           colorClass="bg-emerald-600 shadow-lg shadow-emerald-500/20"
         />
-        <StatsCard 
+        <StatsCard
           title="Syarikat GB"
           value={displayStats.companies}
           subtitle="RANGKAIAN AKTIF ✓"
           icon={<Building2 className="w-6 h-6 text-white" />}
           colorClass="bg-indigo-600 shadow-lg shadow-indigo-500/20"
         />
-        <StatsCard 
+        <StatsCard
           title="Cukai Terkumpul"
           value={displayStats.taxAmount}
           subtitle={`Tepat: ${displayStats.taxExact}`}
           icon={<Coins className="w-6 h-6 text-white" />}
           colorClass="bg-violet-600 shadow-lg shadow-violet-500/20"
         />
-        <StatsCard 
+        <StatsCard
           title="Aktiviti Terkini"
           value={safeActivity.length.toString()}
           subtitle="TRANSAKSI HARI INI"
@@ -128,46 +129,154 @@ export const SummaryView: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-8 bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100">
-          <div className="mb-8">
+          <div className="mb-6">
             <h3 className="text-xl font-bold text-slate-800">Dominasi Syarikat</h3>
-            <p className="text-xs text-slate-400 font-medium">Pecahan unit kenderaan masa nyata dari pangkalan data</p>
+            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Pecahan unit kenderaan masa nyata</p>
           </div>
-          
-          <div className="h-[400px] relative">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={safeDominance}
-                  innerRadius={110}
-                  outerRadius={150}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {safeDominance.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 'bold' }} 
-                />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <span className="text-3xl font-black text-slate-900 tracking-tighter">{totalUnits}</span>
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Unit Total</span>
+
+          <div className="flex flex-col xl:flex-row items-center gap-8">
+            <div className="w-full xl:w-1/2 h-[320px] relative">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={safeDominance.map(d => ({ ...d, value: Number(d.value) || 0 }))}
+                    innerRadius={85}
+                    outerRadius={115}
+                    paddingAngle={6}
+                    dataKey="value"
+                    stroke="none"
+                    animationBegin={0}
+                    animationDuration={1500}
+                  >
+                    {safeDominance.map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={COLORS[index % COLORS.length]}
+                        className="hover:opacity-80 transition-opacity cursor-pointer"
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      borderRadius: '20px',
+                      border: 'none',
+                      boxShadow: '0 20px 50px -12px rgb(0 0 0 / 0.15)',
+                      padding: '12px 16px'
+                    }}
+                    itemStyle={{ fontWeight: '900', fontSize: '11px', textTransform: 'uppercase' }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span className="text-4xl font-black text-slate-900 tracking-tighter">{totalUnits}</span>
+                <span className="text-[9px] text-slate-400 font-black uppercase tracking-[0.2em]">Unit Total</span>
+              </div>
+            </div>
+
+            <div className="w-full xl:w-1/2 grid grid-cols-1 gap-3">
+              {safeDominance.slice(0, 6).map((item, index) => {
+                const percentage = totalUnits > 0 ? ((Number(item.value) / totalUnits) * 100).toFixed(1) : 0;
+                return (
+                  <div key={index} className="flex flex-col gap-1.5 p-3 rounded-xl bg-slate-50/50 border border-slate-100/50">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5 overflow-hidden">
+                        <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
+                        <span className="text-[10px] font-black text-slate-700 truncate uppercase tracking-tight">{item.name}</span>
+                      </div>
+                      <span className="text-[10px] font-black text-indigo-600 ml-2">{percentage}%</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-white rounded-full overflow-hidden border border-slate-100">
+                      <div
+                        className="h-full transition-all duration-1000 ease-out"
+                        style={{
+                          width: `${percentage}%`,
+                          backgroundColor: COLORS[index % COLORS.length]
+                        }}
+                      ></div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 mt-8 gap-x-12 gap-y-3">
-            {safeDominance.map((item, index) => (
-              <div key={index} className="flex items-center justify-between group">
-                <div className="flex items-center gap-3">
-                  <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
-                  <span className="text-xs font-bold text-slate-600 truncate max-w-[180px]">{item.name}</span>
+          <div className="mt-16 pt-12 border-t border-slate-50">
+            <div className="mb-8">
+              <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                <div className="w-1.5 h-4 bg-indigo-600 rounded-full"></div>
+                Ranking Stok Mengikut Syarikat
+              </h4>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1">Perbandingan volum unit merentas portfolio</p>
+            </div>
+
+            <div className="h-[350px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  layout="vertical"
+                  data={safeDominance.slice(0, 8)}
+                  margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
+                >
+                  <defs>
+                    <linearGradient id="barGradient" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor="#6366f1" stopOpacity={0.8} />
+                      <stop offset="100%" stopColor="#8b5cf6" stopOpacity={1} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                  <XAxis type="number" hide />
+                  <YAxis
+                    dataKey="name"
+                    type="category"
+                    width={100}
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#64748b', fontSize: 9, fontWeight: 800, textTransform: 'uppercase' }}
+                  />
+                  <Tooltip
+                    cursor={{ fill: '#f8fafc' }}
+                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 30px -5px rgb(0 0 0 / 0.1)', padding: '12px' }}
+                    itemStyle={{ fontWeight: '900', fontSize: '10px', textTransform: 'uppercase' }}
+                  />
+                  <Bar
+                    dataKey="value"
+                    fill="url(#barGradient)"
+                    radius={[0, 12, 12, 0]}
+                    barSize={24}
+                    animationDuration={2000}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 mt-12 gap-x-12 gap-y-6">
+            {safeDominance.slice(0, 10).map((item, index) => {
+              const percentage = totalUnits > 0 ? ((item.value / totalUnits) * 100).toFixed(1) : 0;
+              return (
+                <div key={index} className="flex flex-col gap-2 group p-4 rounded-2xl hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
+                      <span className="text-[11px] font-black text-slate-700 truncate max-w-[200px] uppercase tracking-tight">{item.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">{percentage}%</span>
+                      <span className="text-[11px] font-bold text-slate-400">{item.value} unit</span>
+                    </div>
+                  </div>
+                  <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full transition-all duration-1000 ease-out rounded-full shadow-[0_0_8px_rgba(0,0,0,0.05)]"
+                      style={{
+                        width: `${percentage}%`,
+                        backgroundColor: COLORS[index % COLORS.length],
+                        opacity: 0.8
+                      }}
+                    ></div>
+                  </div>
                 </div>
-                <span className="text-xs font-black text-slate-400">{item.value} unit</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
