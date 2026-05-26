@@ -26,7 +26,7 @@ export const VehicleDetailView: React.FC<VehicleDetailProps> = ({ lot, onBack })
              <img src="https://upload.wikimedia.org/wikipedia/commons/2/26/Coat_of_arms_of_Malaysia.svg" alt="JKDM Logo" className="w-full h-full object-contain" />
           </div>
           <div>
-            <h1 className="text-2xl font-black text-slate-800 tracking-tight">Rekod Kenderaan</h1>
+            <h1 className="text-2xl font-black text-slate-800 tracking-tight">Penyata Stok Bulanan</h1>
             <p className="text-sm text-slate-400 font-medium">Cawangan Industri, JKDM LTA KL</p>
           </div>
         </div>

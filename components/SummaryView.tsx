@@ -95,7 +95,7 @@ export const SummaryView: React.FC<SummaryViewProps> = ({ onNavigateToVehicles, 
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-10">
         <StatsCard
-          title="Rekod Kenderaan"
+          title="Penyata Stok Bulanan"
           value={displayStats.totalVehicles}
           trend="+4.2%"
           trendType="up"
