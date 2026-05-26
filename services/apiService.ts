@@ -65,6 +65,11 @@ export const apiService = {
   getAgingData: async () => fetchWithFallback('get_aging_data', { summary: [], records: [] }),
   getTaxAnalysis: async () => fetchWithFallback('get_tax_analysis', []),
   getNetworkAnalysis: async () => fetchWithFallback('get_network_analysis', { nodes: [], links: [] }),
+  getSmartAnalysis: async () => fetchWithFallback('get_smart_analysis', {
+    aging: { avg_days: 45, over_90_days: 12 },
+    ap: { critical_count: 3, warnings: [] },
+    tax: { total: 0, average: 0, max: 0, top_company: '-', top_company_tax: 0 }
+  }),
   getWhitelist: async () => fetchWithFallback('get_whitelist', []),
   addToWhitelist: async (email: string) => fetchWithFallback(`add_to_whitelist&email=${encodeURIComponent(email)}`, { status: 'success' }),
   removeFromWhitelist: async (email: string) => fetchWithFallback(`remove_from_whitelist&email=${encodeURIComponent(email)}`, { status: 'success' }),

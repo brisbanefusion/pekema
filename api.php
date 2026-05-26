@@ -218,6 +218,41 @@ try {
             echo json_encode(['nodes' => $nodes, 'links' => $links]);
             break;
 
+        case 'get_smart_analysis':
+            $stmt = $conn->query("SELECT ROUND(AVG(DATEDIFF(CURDATE(), v.`bond-in_date`))) as avg_days, SUM(CASE WHEN DATEDIFF(CURDATE(), v.`bond-in_date`) > 90 THEN 1 ELSE 0 END) as over_90_days FROM vehicle_inventory v $vYearCond");
+            $aging = $stmt->fetch();
+            
+            $stmt = $conn->query("SELECT v.lot_number, v.ap, v.tarikh_luput, IFNULL(g.nama, 'Tiada Syarikat') as company FROM vehicle_inventory v LEFT JOIN gbpekema g ON v.gbpekema_id = g.id WHERE v.tarikh_luput IS NOT NULL AND v.tarikh_luput <= DATE_ADD(CURDATE(), INTERVAL 30 DAY) $whereAndYear ORDER BY v.tarikh_luput ASC LIMIT 10");
+            $ap_warnings = $stmt->fetchAll();
+            $ap_count_stmt = $conn->query("SELECT COUNT(*) FROM vehicle_inventory v WHERE v.tarikh_luput IS NOT NULL AND v.tarikh_luput <= DATE_ADD(CURDATE(), INTERVAL 30 DAY) $whereAndYear");
+            $ap_critical_count = $ap_count_stmt->fetchColumn();
+
+            $stmt = $conn->query("SELECT SUM(v.duty_rm) as total_tax, ROUND(AVG(v.duty_rm)) as avg_tax, MAX(v.duty_rm) as max_tax FROM vehicle_inventory v $vYearCond");
+            $tax = $stmt->fetch();
+            
+            $stmt = $conn->query("SELECT IFNULL(g.nama, 'Tiada Syarikat') as top_company, SUM(v.duty_rm) as top_tax FROM vehicle_inventory v LEFT JOIN gbpekema g ON v.gbpekema_id = g.id $vYearCond GROUP BY v.gbpekema_id ORDER BY top_tax DESC LIMIT 1");
+            $top_comp = $stmt->fetch();
+
+            echo json_encode([
+                "status" => "success",
+                "aging" => [
+                    "avg_days" => $aging['avg_days'] ?? 0,
+                    "over_90_days" => $aging['over_90_days'] ?? 0
+                ],
+                "ap" => [
+                    "critical_count" => $ap_critical_count ?? 0,
+                    "warnings" => $ap_warnings ?: []
+                ],
+                "tax" => [
+                    "total" => $tax['total_tax'] ?? 0,
+                    "average" => $tax['avg_tax'] ?? 0,
+                    "max" => $tax['max_tax'] ?? 0,
+                    "top_company" => $top_comp['top_company'] ?? '-',
+                    "top_company_tax" => $top_comp['top_tax'] ?? 0
+                ]
+            ]);
+            break;
+
         case 'get_whitelist':
             try {
                 $stmt = $conn->query("SELECT email FROM whitelist_users");
