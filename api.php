@@ -219,7 +219,7 @@ try {
             break;
 
         case 'get_smart_analysis':
-            $stmt = $conn->query("SELECT ROUND(AVG(DATEDIFF(CURDATE(), v.`bond-in_date`))) as avg_days, SUM(CASE WHEN DATEDIFF(CURDATE(), v.`bond-in_date`) > 90 THEN 1 ELSE 0 END) as over_90_days FROM vehicle_inventory v $vYearCond");
+            $stmt = $conn->query("SELECT ROUND(AVG(DATEDIFF(CURDATE(), v.`bond-in_date`))) as avg_days, SUM(CASE WHEN DATEDIFF(CURDATE(), v.`bond-in_date`) > 90 THEN 1 ELSE 0 END) as over_90_days, MIN(DATEDIFF(CURDATE(), v.`bond-in_date`)) as min_days, MAX(DATEDIFF(CURDATE(), v.`bond-in_date`)) as max_days FROM vehicle_inventory v $vYearCond");
             $aging = $stmt->fetch();
             
             $stmt = $conn->query("SELECT v.lot_number, v.ap, v.tarikh_luput, IFNULL(g.nama, 'Tiada Syarikat') as company FROM vehicle_inventory v LEFT JOIN gbpekema g ON v.gbpekema_id = g.id WHERE v.tarikh_luput IS NOT NULL AND v.tarikh_luput <= DATE_ADD(CURDATE(), INTERVAL 30 DAY) $whereAndYear ORDER BY v.tarikh_luput ASC LIMIT 10");
@@ -227,17 +227,39 @@ try {
             $ap_count_stmt = $conn->query("SELECT COUNT(*) FROM vehicle_inventory v WHERE v.tarikh_luput IS NOT NULL AND v.tarikh_luput <= DATE_ADD(CURDATE(), INTERVAL 30 DAY) $whereAndYear");
             $ap_critical_count = $ap_count_stmt->fetchColumn();
 
-            $stmt = $conn->query("SELECT SUM(v.duty_rm) as total_tax, ROUND(AVG(v.duty_rm)) as avg_tax, MAX(v.duty_rm) as max_tax FROM vehicle_inventory v $vYearCond");
+            $stmt = $conn->query("SELECT SUM(v.duty_rm) as total_tax, ROUND(AVG(v.duty_rm)) as avg_tax, MAX(v.duty_rm) as max_tax, SUM(v.duti_import) as total_import, SUM(v.duti_eksais) as total_eksais, SUM(v.cukai_jualan) as total_jualan FROM vehicle_inventory v $vYearCond");
             $tax = $stmt->fetch();
             
             $stmt = $conn->query("SELECT IFNULL(g.nama, 'Tiada Syarikat') as top_company, SUM(v.duty_rm) as top_tax FROM vehicle_inventory v LEFT JOIN gbpekema g ON v.gbpekema_id = g.id $vYearCond GROUP BY v.gbpekema_id ORDER BY top_tax DESC LIMIT 1");
             $top_comp = $stmt->fetch();
 
+            // Model popularity ranking (Top 5)
+            $stmt = $conn->query("SELECT v.vehicle_model as model, COUNT(*) as count FROM vehicle_inventory v $vYearCond GROUP BY v.vehicle_model ORDER BY count DESC LIMIT 5");
+            $top_models = $stmt->fetchAll();
+
+            // Condition breakdown (New vs Used)
+            $stmt = $conn->query("SELECT v.condition_status as cond, COUNT(*) as count FROM vehicle_inventory v $vYearCond GROUP BY v.condition_status ORDER BY count DESC");
+            $conditions = $stmt->fetchAll();
+
+            // Monthly import trend (last 6 months)
+            $stmt = $conn->query("SELECT DATE_FORMAT(v.import_date, '%Y-%m') as month, COUNT(*) as count FROM vehicle_inventory v WHERE v.import_date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH) GROUP BY month ORDER BY month ASC");
+            $monthly_trend = $stmt->fetchAll();
+
+            // Top 5 companies by vehicle count
+            $stmt = $conn->query("SELECT IFNULL(g.nama, 'Tiada Syarikat') as company, COUNT(*) as count, SUM(v.duty_rm) as total_tax FROM vehicle_inventory v LEFT JOIN gbpekema g ON v.gbpekema_id = g.id $vYearCond GROUP BY v.gbpekema_id ORDER BY count DESC LIMIT 5");
+            $top_companies = $stmt->fetchAll();
+
+            // Engine CC distribution
+            $stmt = $conn->query("SELECT CASE WHEN v.engine_cc <= 1500 THEN '≤1500cc' WHEN v.engine_cc <= 2000 THEN '1501-2000cc' WHEN v.engine_cc <= 3000 THEN '2001-3000cc' ELSE '>3000cc' END as bracket, COUNT(*) as count FROM vehicle_inventory v WHERE v.engine_cc IS NOT NULL $whereAndYear GROUP BY bracket ORDER BY MIN(v.engine_cc)");
+            $cc_distribution = $stmt->fetchAll();
+
             echo json_encode([
                 "status" => "success",
                 "aging" => [
                     "avg_days" => $aging['avg_days'] ?? 0,
-                    "over_90_days" => $aging['over_90_days'] ?? 0
+                    "over_90_days" => $aging['over_90_days'] ?? 0,
+                    "min_days" => $aging['min_days'] ?? 0,
+                    "max_days" => $aging['max_days'] ?? 0
                 ],
                 "ap" => [
                     "critical_count" => $ap_critical_count ?? 0,
@@ -248,8 +270,16 @@ try {
                     "average" => $tax['avg_tax'] ?? 0,
                     "max" => $tax['max_tax'] ?? 0,
                     "top_company" => $top_comp['top_company'] ?? '-',
-                    "top_company_tax" => $top_comp['top_tax'] ?? 0
-                ]
+                    "top_company_tax" => $top_comp['top_tax'] ?? 0,
+                    "total_import" => $tax['total_import'] ?? 0,
+                    "total_eksais" => $tax['total_eksais'] ?? 0,
+                    "total_jualan" => $tax['total_jualan'] ?? 0
+                ],
+                "top_models" => $top_models ?: [],
+                "conditions" => $conditions ?: [],
+                "monthly_trend" => $monthly_trend ?: [],
+                "top_companies" => $top_companies ?: [],
+                "cc_distribution" => $cc_distribution ?: []
             ]);
             break;
 
