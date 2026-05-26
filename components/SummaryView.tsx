@@ -12,9 +12,10 @@ import { apiService, apiStatus } from '../services/apiService.ts';
 
 interface SummaryViewProps {
   onNavigateToVehicles?: () => void;
+  onNavigateToVehicleDetail?: (lot: string) => void;
 }
 
-export const SummaryView: React.FC<SummaryViewProps> = ({ onNavigateToVehicles }) => {
+export const SummaryView: React.FC<SummaryViewProps> = ({ onNavigateToVehicles, onNavigateToVehicleDetail }) => {
   const [stats, setStats] = useState<any>(null);
   const [dominanceData, setDominanceData] = useState<any[]>([]);
   const [activityLog, setActivityLog] = useState<any[]>([]);
@@ -306,7 +307,12 @@ export const SummaryView: React.FC<SummaryViewProps> = ({ onNavigateToVehicles }
                     <Plus className="w-5 h-5 text-slate-400 group-hover:text-indigo-600" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h4 className="text-[13px] font-bold text-slate-800 leading-tight mb-0.5 truncate uppercase">{item.vehicle}</h4>
+                    <h4 
+                      className="text-[13px] font-bold text-slate-800 leading-tight mb-0.5 truncate uppercase cursor-pointer hover:text-indigo-600 transition-colors"
+                      onClick={() => onNavigateToVehicleDetail && onNavigateToVehicleDetail(item.vehicle)}
+                    >
+                      {item.vehicle}
+                    </h4>
                     <p className="text-[10px] text-slate-400 font-bold uppercase truncate">{item.company}</p>
                   </div>
                   <div className="text-right">

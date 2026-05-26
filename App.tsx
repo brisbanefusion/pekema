@@ -216,7 +216,7 @@ const App: React.FC = () => {
         </div>
 
         {/* Fix: Implement conditional rendering for all dashboard views */}
-        {activeTab === DashboardTab.RINGKASAN && <SummaryView key={`summary-${activeYear}`} onNavigateToVehicles={() => setActiveTab(DashboardTab.KENDERAAN)} />}
+        {activeTab === DashboardTab.RINGKASAN && <SummaryView key={`summary-${activeYear}`} onNavigateToVehicles={() => setActiveTab(DashboardTab.KENDERAAN)} onNavigateToVehicleDetail={(lot) => { setSelectedLot(lot); setActiveTab(DashboardTab.REKOD_DETAIL); }} />}
         {activeTab === DashboardTab.KENDERAAN && <VehicleListView key={`vehicles-${activeYear}`} onSelectLot={(lot) => { setSelectedLot(lot); setActiveTab(DashboardTab.REKOD_DETAIL); }} onAddNew={() => setActiveTab(DashboardTab.TAMBAH_KENDERAAN)} />}
         {activeTab === DashboardTab.REKOD_DETAIL && selectedLot && <VehicleDetailView key={`detail-${activeYear}-${selectedLot}`} lot={selectedLot} onBack={() => setActiveTab(DashboardTab.KENDERAAN)} />}
         {activeTab === DashboardTab.TAMBAH_KENDERAAN && <AddVehicleView key={`add-${activeYear}`} onBack={() => setActiveTab(DashboardTab.KENDERAAN)} />}
