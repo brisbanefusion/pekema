@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { FileText, Settings, Home, Printer, ChevronLeft } from 'lucide-react';
+import { KASTAM_LOGO } from '../logo.ts';
 
 interface VehicleDetailProps {
   lot: string;
@@ -23,7 +24,7 @@ export const VehicleDetailView: React.FC<VehicleDetailProps> = ({ lot, onBack })
         {/* Header with Logo */}
         <div className="p-8 border-b border-slate-100 flex items-center gap-6">
           <div className="w-16 h-16 flex-shrink-0">
-             <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Crest_of_the_Royal_Malaysian_Customs.svg/1024px-Crest_of_the_Royal_Malaysian_Customs.svg.png" alt="Kastam Logo" className="w-full h-full object-contain" />
+             <img src={KASTAM_LOGO} alt="Kastam Logo" className="w-full h-full object-contain" />
           </div>
           <div>
             <h1 className="text-2xl font-black text-slate-800 tracking-tight">Penyata Stok Bulanan</h1>
