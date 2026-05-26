@@ -219,38 +219,39 @@ try {
             break;
 
         case 'get_smart_analysis':
-            $stmt = $conn->query("SELECT ROUND(AVG(DATEDIFF(CURDATE(), v.`bond-in_date`))) as avg_days, SUM(CASE WHEN DATEDIFF(CURDATE(), v.`bond-in_date`) > 90 THEN 1 ELSE 0 END) as over_90_days, MIN(DATEDIFF(CURDATE(), v.`bond-in_date`)) as min_days, MAX(DATEDIFF(CURDATE(), v.`bond-in_date`)) as max_days FROM vehicle_inventory v $vYearCond");
+            // Analisa pintar: sentiasa analisa SEMUA data tanpa filter tahun
+            $stmt = $conn->query("SELECT ROUND(AVG(DATEDIFF(CURDATE(), COALESCE(v.`bond-in_date`, v.import_date)))) as avg_days, SUM(CASE WHEN DATEDIFF(CURDATE(), COALESCE(v.`bond-in_date`, v.import_date)) > 90 THEN 1 ELSE 0 END) as over_90_days, MIN(DATEDIFF(CURDATE(), COALESCE(v.`bond-in_date`, v.import_date))) as min_days, MAX(DATEDIFF(CURDATE(), COALESCE(v.`bond-in_date`, v.import_date))) as max_days FROM vehicle_inventory v WHERE COALESCE(v.`bond-in_date`, v.import_date) IS NOT NULL");
             $aging = $stmt->fetch();
             
-            $stmt = $conn->query("SELECT v.lot_number, v.ap, v.tarikh_luput, IFNULL(g.nama, 'Tiada Syarikat') as company FROM vehicle_inventory v LEFT JOIN gbpekema g ON v.gbpekema_id = g.id WHERE v.tarikh_luput IS NOT NULL AND v.tarikh_luput <= DATE_ADD(CURDATE(), INTERVAL 30 DAY) $whereAndYear ORDER BY v.tarikh_luput ASC LIMIT 10");
+            $stmt = $conn->query("SELECT v.lot_number, v.ap, v.tarikh_luput, IFNULL(g.nama, 'Tiada Syarikat') as company FROM vehicle_inventory v LEFT JOIN gbpekema g ON v.gbpekema_id = g.id WHERE v.tarikh_luput IS NOT NULL AND v.tarikh_luput <= DATE_ADD(CURDATE(), INTERVAL 30 DAY) ORDER BY v.tarikh_luput ASC LIMIT 10");
             $ap_warnings = $stmt->fetchAll();
-            $ap_count_stmt = $conn->query("SELECT COUNT(*) FROM vehicle_inventory v WHERE v.tarikh_luput IS NOT NULL AND v.tarikh_luput <= DATE_ADD(CURDATE(), INTERVAL 30 DAY) $whereAndYear");
+            $ap_count_stmt = $conn->query("SELECT COUNT(*) FROM vehicle_inventory v WHERE v.tarikh_luput IS NOT NULL AND v.tarikh_luput <= DATE_ADD(CURDATE(), INTERVAL 30 DAY)");
             $ap_critical_count = $ap_count_stmt->fetchColumn();
 
-            $stmt = $conn->query("SELECT SUM(v.duty_rm) as total_tax, ROUND(AVG(v.duty_rm)) as avg_tax, MAX(v.duty_rm) as max_tax, SUM(v.duti_import) as total_import, SUM(v.duti_eksais) as total_eksais, SUM(v.cukai_jualan) as total_jualan FROM vehicle_inventory v $vYearCond");
+            $stmt = $conn->query("SELECT SUM(v.duty_rm) as total_tax, ROUND(AVG(v.duty_rm)) as avg_tax, MAX(v.duty_rm) as max_tax, SUM(v.duti_import) as total_import, SUM(v.duti_eksais) as total_eksais, SUM(v.cukai_jualan) as total_jualan FROM vehicle_inventory v WHERE v.duty_rm IS NOT NULL AND v.duty_rm > 0");
             $tax = $stmt->fetch();
             
-            $stmt = $conn->query("SELECT IFNULL(g.nama, 'Tiada Syarikat') as top_company, SUM(v.duty_rm) as top_tax FROM vehicle_inventory v LEFT JOIN gbpekema g ON v.gbpekema_id = g.id $vYearCond GROUP BY v.gbpekema_id ORDER BY top_tax DESC LIMIT 1");
+            $stmt = $conn->query("SELECT IFNULL(g.nama, 'Tiada Syarikat') as top_company, SUM(v.duty_rm) as top_tax FROM vehicle_inventory v LEFT JOIN gbpekema g ON v.gbpekema_id = g.id WHERE v.duty_rm IS NOT NULL AND v.duty_rm > 0 GROUP BY v.gbpekema_id ORDER BY top_tax DESC LIMIT 1");
             $top_comp = $stmt->fetch();
 
             // Model popularity ranking (Top 5)
-            $stmt = $conn->query("SELECT v.vehicle_model as model, COUNT(*) as count FROM vehicle_inventory v $vYearCond GROUP BY v.vehicle_model ORDER BY count DESC LIMIT 5");
+            $stmt = $conn->query("SELECT v.vehicle_model as model, COUNT(*) as count FROM vehicle_inventory v WHERE v.vehicle_model IS NOT NULL AND v.vehicle_model != '' GROUP BY v.vehicle_model ORDER BY count DESC LIMIT 5");
             $top_models = $stmt->fetchAll();
 
             // Condition breakdown (New vs Used)
-            $stmt = $conn->query("SELECT v.condition_status as cond, COUNT(*) as count FROM vehicle_inventory v $vYearCond GROUP BY v.condition_status ORDER BY count DESC");
+            $stmt = $conn->query("SELECT UPPER(IFNULL(v.condition_status,'USED')) as cond, COUNT(*) as count FROM vehicle_inventory v GROUP BY cond ORDER BY count DESC");
             $conditions = $stmt->fetchAll();
 
-            // Monthly import trend (last 6 months)
-            $stmt = $conn->query("SELECT DATE_FORMAT(v.import_date, '%Y-%m') as month, COUNT(*) as count FROM vehicle_inventory v WHERE v.import_date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH) GROUP BY month ORDER BY month ASC");
+            // Monthly trend (last 12 months based on created_at)
+            $stmt = $conn->query("SELECT DATE_FORMAT(v.created_at, '%Y-%m') as month, COUNT(*) as count FROM vehicle_inventory v WHERE v.created_at >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH) GROUP BY month ORDER BY month ASC");
             $monthly_trend = $stmt->fetchAll();
 
             // Top 5 companies by vehicle count
-            $stmt = $conn->query("SELECT IFNULL(g.nama, 'Tiada Syarikat') as company, COUNT(*) as count, SUM(v.duty_rm) as total_tax FROM vehicle_inventory v LEFT JOIN gbpekema g ON v.gbpekema_id = g.id $vYearCond GROUP BY v.gbpekema_id ORDER BY count DESC LIMIT 5");
+            $stmt = $conn->query("SELECT IFNULL(g.nama, 'Tiada Syarikat') as company, COUNT(*) as count, IFNULL(SUM(v.duty_rm),0) as total_tax FROM vehicle_inventory v LEFT JOIN gbpekema g ON v.gbpekema_id = g.id GROUP BY v.gbpekema_id ORDER BY count DESC LIMIT 5");
             $top_companies = $stmt->fetchAll();
 
             // Engine CC distribution
-            $stmt = $conn->query("SELECT CASE WHEN v.engine_cc <= 1500 THEN '≤1500cc' WHEN v.engine_cc <= 2000 THEN '1501-2000cc' WHEN v.engine_cc <= 3000 THEN '2001-3000cc' ELSE '>3000cc' END as bracket, COUNT(*) as count FROM vehicle_inventory v WHERE v.engine_cc IS NOT NULL $whereAndYear GROUP BY bracket ORDER BY MIN(v.engine_cc)");
+            $stmt = $conn->query("SELECT CASE WHEN v.engine_cc <= 1500 THEN '≤1500cc' WHEN v.engine_cc <= 2000 THEN '1501-2000cc' WHEN v.engine_cc <= 3000 THEN '2001-3000cc' ELSE '>3000cc' END as bracket, COUNT(*) as count FROM vehicle_inventory v WHERE v.engine_cc IS NOT NULL GROUP BY bracket ORDER BY MIN(v.engine_cc)");
             $cc_distribution = $stmt->fetchAll();
 
             echo json_encode([

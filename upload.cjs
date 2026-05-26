@@ -11,7 +11,9 @@ async function deploy() {
             secure: true,
             secureOptions: { rejectUnauthorized: false }
         });
+        console.log("Uploading api.php...");
         await client.uploadFrom(path.join(__dirname, "api.php"), "/api.php");
+        console.log("Uploading dist...");
         await client.uploadFromDir(path.join(__dirname, "dist"), "/");
         console.log("Deploy complete!");
     }
