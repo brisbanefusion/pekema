@@ -23,7 +23,7 @@ header("Content-Type: application/json; charset=UTF-8");
 // 2. Konfigurasi Pangkalan Data
 $db_config = [
     "host" => "localhost",
-    "db"   => "kliacust_gudang",
+    "db"   => "kliacust_pekemamy",
     "user" => "kliacust_iris",
     "pass" => "Iris6102009@#" 
 ];
