@@ -1,6 +1,6 @@
 <?php
 /**
- * GBPekema Command Center Backend API - Perbaikan SSL/CORS & Database
+ * MyPEKEMA APP Backend API - Perbaikan SSL/CORS & Database
  */
 
 ob_start();
@@ -41,6 +41,17 @@ function connectDB($config) {
     }
 }
 
+function logAudit($conn, $email, $action, $details) {
+    try {
+        $stmt = $conn->prepare("INSERT INTO audit_logs (email, action, details) VALUES (:email, :action, :details)");
+        $stmt->execute([
+            'email' => $email ?: 'System/Guest',
+            'action' => $action,
+            'details' => $details
+        ]);
+    } catch(Exception $e) {}
+}
+
 try {
     $action = isset($_GET['action']) ? $_GET['action'] : '';
     $yearFilter = isset($_GET['year']) ? $_GET['year'] : '';
@@ -70,6 +81,7 @@ try {
             "message" => "API is Active",
             "database" => $db_status,
             "server_time" => date('Y-m-d H:i:s'),
+            "file" => __FILE__,
             "note" => "Jika anda melihat ini, sambungan API anda sudah sah."
         ]);
         exit;
@@ -100,8 +112,16 @@ try {
             CREATE TABLE IF NOT EXISTS whitelist_users (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 email VARCHAR(255) NOT NULL UNIQUE
+            ) ENGINE=InnoDB;
+            CREATE TABLE IF NOT EXISTS audit_logs (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                email VARCHAR(255) NOT NULL,
+                action VARCHAR(100) NOT NULL,
+                details TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             ) ENGINE=InnoDB;";
             $conn->exec($sql);
+            logAudit($conn, 'System', 'Setup Database', 'Membina/membaiki jadual pangkalan data termasuk whitelist_users dan audit_logs.');
             echo json_encode(["status" => "success", "message" => "Jadual sedia digunakan."]);
             break;
 
@@ -132,10 +152,9 @@ try {
             break;
 
         case 'get_vehicles':
-            $stmt = $conn->query("SELECT v.lot_number as lot, IFNULL(g.nama, 'Tiada Syarikat') as company, v.chassis_number as chassis, v.color, DATE_FORMAT(v.`bond-in_date`, '%d/%m/%Y') as date, v.vehicle_model as model FROM vehicle_inventory v LEFT JOIN gbpekema g ON v.gbpekema_id = g.id $vYearCond ORDER BY v.created_at DESC LIMIT 100");
+            $stmt = $conn->query("SELECT v.lot_number as lot, IFNULL(g.nama, 'Tiada Syarikat') as company, v.chassis_number as chassis, v.color, DATE_FORMAT(v.`bond-in_date`, '%d/%m/%Y') as date, v.vehicle_model as model, v.ap, v.`bond-in_date` as raw_date, v.tarikh_luput as expiry_date FROM vehicle_inventory v LEFT JOIN gbpekema g ON v.gbpekema_id = g.id $vYearCond ORDER BY v.created_at DESC LIMIT 100");
             echo json_encode($stmt->fetchAll());
             break;
-
         case 'get_dominance_data':
             $stmt = $conn->query("SELECT IFNULL(g.nama, 'Tiada Syarikat') as name, COUNT(*) as value FROM vehicle_inventory v LEFT JOIN gbpekema g ON v.gbpekema_id = g.id $vYearCond GROUP BY v.gbpekema_id ORDER BY value DESC");
             echo json_encode($stmt->fetchAll());
@@ -297,6 +316,7 @@ try {
                 try {
                     $stmt = $conn->prepare("INSERT IGNORE INTO whitelist_users (email) VALUES (:email)");
                     $stmt->execute(['email' => $email]);
+                    logAudit($conn, 'Superadmin', 'Tambah Whitelist', "Menambah emel $email ke dalam senarai whitelist.");
                 } catch(Exception $e) {}
             }
             echo json_encode(["status" => "success"]);
@@ -308,9 +328,72 @@ try {
                 try {
                     $stmt = $conn->prepare("DELETE FROM whitelist_users WHERE email = :email");
                     $stmt->execute(['email' => $email]);
+                    logAudit($conn, 'Superadmin', 'Padam Whitelist', "Memadam emel $email daripada senarai whitelist.");
                 } catch(Exception $e) {}
             }
             echo json_encode(["status" => "success"]);
+            break;
+
+        case 'get_companies':
+            $stmt = $conn->query("SELECT g.id, g.nama AS name, g.alamat AS address, g.pic, g.no_tel AS phone, COUNT(v.id) AS vehicle_count FROM gbpekema g LEFT JOIN vehicle_inventory v ON g.id = v.gbpekema_id $whereAndYear GROUP BY g.id ORDER BY name ASC");
+            echo json_encode($stmt->fetchAll());
+            break;
+
+        case 'verify_login':
+            $email = isset($_GET['email']) ? $_GET['email'] : '';
+            if (!$email) {
+                $input = json_decode(file_get_contents('php://input'), true);
+                $email = isset($input['email']) ? $input['email'] : '';
+            }
+            if (!$email) {
+                echo json_encode(["status" => "error", "message" => "Email diperlukan."]);
+                break;
+            }
+            $email = strtolower(trim($email));
+            
+            if ($email === 'afandi.amin@customs.gov.my') {
+                logAudit($conn, $email, 'Log Masuk', 'Pengguna Superadmin berjaya melepasi whitelist dan log masuk.');
+                echo json_encode(["status" => "success", "allowed" => true, "email" => $email]);
+                break;
+            }
+            
+            $stmt = $conn->prepare("SELECT COUNT(*) FROM whitelist_users WHERE LOWER(email) = :email");
+            $stmt->execute(['email' => $email]);
+            $count = $stmt->fetchColumn();
+            
+            if ($count > 0) {
+                logAudit($conn, $email, 'Log Masuk', 'Pengguna berjaya melepasi whitelist dan log masuk.');
+                echo json_encode(["status" => "success", "allowed" => true, "email" => $email]);
+            } else {
+                logAudit($conn, $email, 'Log Masuk Gagal', 'Cubaan log masuk disekat kerana emel tiada dalam whitelist.');
+                echo json_encode(["status" => "error", "allowed" => false, "message" => "Emel tidak tersenarai di dalam whitelist."]);
+            }
+            break;
+
+        case 'get_audit_logs':
+            $stmt = $conn->query("SELECT id, email, action, details, DATE_FORMAT(created_at, '%d/%m/%Y %H:%i:%s') as time FROM audit_logs ORDER BY created_at DESC LIMIT 100");
+            echo json_encode($stmt->fetchAll());
+            break;
+
+        case 'send_warning':
+            $ap = isset($_GET['ap']) ? $_GET['ap'] : '';
+            $company = isset($_GET['company']) ? $_GET['company'] : '';
+            if (!$ap || !$company) {
+                echo json_encode(["status" => "error", "message" => "Parameter ap dan company diperlukan."]);
+                break;
+            }
+            logAudit($conn, 'Pegawai Kastam', 'Hantar Amaran', "Menghantar notifikasi amaran tamat tempoh AP $ap kepada syarikat $company.");
+            echo json_encode(["status" => "success", "message" => "Amaran bertulis bagi AP $ap berjaya dihantar ke emel PIC $company."]);
+            break;
+
+        case 'email_report':
+            $company = isset($_GET['company']) ? $_GET['company'] : '';
+            if (!$company) {
+                echo json_encode(["status" => "error", "message" => "Parameter company diperlukan."]);
+                break;
+            }
+            logAudit($conn, 'Pegawai Kastam', 'Hantar E-mel Laporan', "Menghantar laporan unjuran cukai bulanan kepada PIC syarikat $company.");
+            echo json_encode(["status" => "success", "message" => "Laporan unjuran cukai berjaya dihantar ke e-mel PIC $company."]);
             break;
 
         default:

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { apiService } from '../services/apiService';
+// Fix: Added missing apiService import path verification
+import { apiService } from '../services/apiService.ts';
 import {
-  Building2, Printer, Download, MapPin, Loader2, Sparkles, AlertCircle
+  Building2, Printer, Download, MapPin, Loader2, Sparkles, AlertCircle, Map, Undo2, Navigation
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
@@ -16,10 +17,32 @@ const NEGERI_OPTIONS = [
 
 const COLORS = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#F97316', '#14B8A6'];
 
+const STATE_MAP_DATA = [
+  // West Malaysia
+  { id: 'Perlis', name: 'Perlis', path: 'M 38 18 L 46 18 L 44 24 L 36 23 Z', area: 'semenanjung' },
+  { id: 'Kedah', name: 'Kedah', path: 'M 36 23 L 44 24 L 46 18 L 52 20 L 56 36 L 42 44 L 38 32 Z', area: 'semenanjung' },
+  { id: 'Pulau Pinang', name: 'Pulau Pinang', path: 'M 34 36 L 40 36 L 39 42 L 33 41 Z', area: 'semenanjung' },
+  { id: 'Perak', name: 'Perak', path: 'M 42 44 L 56 36 L 64 40 L 68 62 L 52 76 L 44 62 Z', area: 'semenanjung' },
+  { id: 'Kelantan', name: 'Kelantan', path: 'M 64 40 L 82 46 L 76 72 L 66 72 L 64 56 Z', area: 'semenanjung' },
+  { id: 'Terengganu', name: 'Terengganu', path: 'M 82 46 L 98 54 L 90 86 L 76 72 Z', area: 'semenanjung' },
+  { id: 'Pahang', name: 'Pahang', path: 'M 66 72 L 76 72 L 90 86 L 86 110 L 62 106 L 58 88 Z', area: 'semenanjung' },
+  { id: 'Selangor', name: 'Selangor', path: 'M 52 76 L 66 72 L 58 88 L 62 106 L 50 102 Z', area: 'semenanjung' },
+  { id: 'W.P. Kuala Lumpur', name: 'W.P. Kuala Lumpur', path: 'M 55 92 L 59 92 L 59 96 L 55 96 Z', area: 'semenanjung' },
+  { id: 'Negeri Sembilan', name: 'Negeri Sembilan', path: 'M 62 106 L 74 104 L 70 116 L 58 114 Z', area: 'semenanjung' },
+  { id: 'Melaka', name: 'Melaka', path: 'M 60 115 L 68 113 L 66 121 L 58 120 Z', area: 'semenanjung' },
+  { id: 'Johor', name: 'Johor', path: 'M 74 104 L 86 110 L 94 130 L 76 136 L 66 121 L 70 116 Z', area: 'semenanjung' },
+  
+  // East Malaysia
+  { id: 'Sarawak', name: 'Sarawak', path: 'M 150 110 L 185 105 L 220 88 L 245 74 L 256 56 L 246 60 L 230 74 L 190 92 L 150 98 Z', area: 'borneo' },
+  { id: 'Sabah', name: 'Sabah', path: 'M 256 56 L 270 40 L 295 40 L 305 56 L 288 78 L 265 78 L 252 66 Z', area: 'borneo' },
+  { id: 'W.P. Labuan', name: 'W.P. Labuan', path: 'M 251 48 L 255 48 L 255 52 L 251 52 Z', area: 'borneo' }
+];
+
 export const TaxAnalysisView: React.FC = () => {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [negeriFilter, setNegeriFilter] = useState('Semua');
+  const [hoveredState, setHoveredState] = useState<string | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -29,7 +52,6 @@ export const TaxAnalysisView: React.FC = () => {
     setLoading(true);
     try {
       const result = await apiService.getTaxAnalysis();
-      // Ensure numerical data types
       const formatted = result.map((item: any) => ({
         ...item,
         tax: Number(item.tax) || 0,
@@ -48,11 +70,29 @@ export const TaxAnalysisView: React.FC = () => {
     if (negeriFilter !== 'Semua') {
       filtered = data.filter(item => item.negeri === negeriFilter);
     }
-    // Sort by tax descending
     return filtered.sort((a, b) => b.tax - a.tax);
   }, [data, negeriFilter]);
 
   const totalTax = useMemo(() => filteredData.reduce((acc, curr) => acc + curr.tax, 0), [filteredData]);
+
+  // Aggregate stats per state
+  const stateStats = useMemo(() => {
+    const stats: { [key: string]: { tax: number; units: number } } = {};
+    NEGERI_OPTIONS.forEach(st => {
+      if (st !== 'Semua') {
+        stats[st] = { tax: 0, units: 0 };
+      }
+    });
+
+    data.forEach(item => {
+      const st = item.negeri;
+      if (st && stats[st]) {
+        stats[st].tax += item.tax;
+        stats[st].units += item.units;
+      }
+    });
+    return stats;
+  }, [data]);
 
   const exportTableToCSV = () => {
     const headers = ['Nama Syarikat (GB/PEKEMA)', 'Negeri', 'Jumlah Cukai (RM)', 'Unit'];
@@ -73,6 +113,69 @@ export const TaxAnalysisView: React.FC = () => {
       document.body.removeChild(link);
     }
   };
+
+  const handleStateClick = (stateId: string) => {
+    if (negeriFilter === stateId) {
+      setNegeriFilter('Semua');
+    } else {
+      setNegeriFilter(stateId);
+    }
+  };
+
+  const getMapStateStyle = (stateId: string) => {
+    const isSelected = negeriFilter === stateId;
+    const isHovered = hoveredState === stateId;
+    const hasData = stateStats[stateId] && stateStats[stateId].units > 0;
+
+    if (isSelected) {
+      return {
+        fill: '#4f46e5', // Solid Indigo-600
+        stroke: '#ffffff',
+        strokeWidth: 2,
+        cursor: 'pointer',
+        transition: 'all 200ms ease'
+      };
+    }
+    if (isHovered) {
+      return {
+        fill: hasData ? '#818cf8' : '#475569', // Indigo-400 or slate hover
+        stroke: '#ffffff',
+        strokeWidth: 1.5,
+        cursor: 'pointer',
+        transition: 'all 200ms ease'
+      };
+    }
+    return {
+      fill: hasData ? '#1e1b4b' : '#1e293b', // Deep indigo-950 or Slate-800
+      stroke: hasData ? '#4f46e5' : '#334155', // Indigo stroke or Slate-700
+      strokeWidth: 1,
+      cursor: 'pointer',
+      transition: 'all 200ms ease'
+    };
+  };
+
+  // Tooltip & details calculations
+  const displayStats = useMemo(() => {
+    const active = hoveredState || (negeriFilter !== 'Semua' ? negeriFilter : null);
+    if (active && stateStats[active]) {
+      return {
+        name: active,
+        tax: stateStats[active].tax,
+        units: stateStats[active].units,
+        isHovered: !!hoveredState
+      };
+    }
+    
+    // Default national stats
+    const nationalTax = Object.values(stateStats).reduce((sum, current) => sum + current.tax, 0);
+    const nationalUnits = Object.values(stateStats).reduce((sum, current) => sum + current.units, 0);
+    return {
+      name: 'Seluruh Malaysia',
+      tax: nationalTax,
+      units: nationalUnits,
+      isHovered: false
+    };
+  }, [hoveredState, negeriFilter, stateStats]);
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
@@ -120,6 +223,145 @@ export const TaxAnalysisView: React.FC = () => {
         </div>
       ) : (
         <>
+          {/* Interactive Map Visual Section */}
+          <div className="bg-slate-900 rounded-[2.5rem] p-8 border border-white/10 text-white relative overflow-hidden shadow-2xl print:hidden animate-in zoom-in duration-300">
+            <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none">
+              <Map className="w-64 h-64" />
+            </div>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-10">
+              {/* Map SVG */}
+              <div className="lg:col-span-8 flex flex-col justify-between h-full">
+                <div>
+                  <h3 className="text-sm font-black text-indigo-300 uppercase tracking-widest flex items-center gap-2 mb-2">
+                    <Navigation className="w-4 h-4 rotate-45" /> Peta Interaktif Malaysia
+                  </h3>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-6">
+                    Layangkan tetikus untuk statistik, klik negeri untuk menapis jadual data.
+                  </p>
+                </div>
+                
+                <div className="flex items-center justify-center bg-black/25 rounded-[2rem] border border-white/5 p-6 min-h-[300px]">
+                  <svg viewBox="0 0 340 160" className="w-full h-auto max-h-[320px]">
+                    <defs>
+                      <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+                        <stop offset="0%" stopColor="#4f46e5" stopOpacity="0.25" />
+                        <stop offset="100%" stopColor="#4f46e5" stopOpacity="0" />
+                      </radialGradient>
+                      <filter id="shadow-glow" x="-15%" y="-15%" width="130%" height="130%">
+                        <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#818cf8" floodOpacity="0.5"/>
+                      </filter>
+                    </defs>
+                    <rect width="100%" height="100%" fill="url(#glow)" rx="20" className="pointer-events-none" />
+                    
+                    {/* Grid partition lines */}
+                    <line x1="120" y1="10" x2="120" y2="150" stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" />
+                    <text x="110" y="16" fill="rgba(255,255,255,0.15)" fontSize="7" fontWeight="bold" textAnchor="end">Semenanjung</text>
+                    <text x="130" y="16" fill="rgba(255,255,255,0.15)" fontSize="7" fontWeight="bold">Sabah & Sarawak</text>
+
+                    {/* Rendering SVG State Paths */}
+                    {STATE_MAP_DATA.map((state) => (
+                      <path
+                        key={state.id}
+                        d={state.path}
+                        style={getMapStateStyle(state.id)}
+                        onMouseEnter={() => setHoveredState(state.id)}
+                        onMouseLeave={() => setHoveredState(null)}
+                        onClick={() => handleStateClick(state.id)}
+                      />
+                    ))}
+
+                    {/* KLIA Hub Glowing circular node */}
+                    <g 
+                      className="cursor-pointer"
+                      onMouseEnter={() => setHoveredState('KLIA')}
+                      onMouseLeave={() => setHoveredState(null)}
+                      onClick={() => handleStateClick('KLIA')}
+                    >
+                      <circle 
+                        cx="50" 
+                        cy="96" 
+                        r="3.5" 
+                        className={`stroke-white stroke-[0.7] transition-all ${
+                          negeriFilter === 'KLIA' || hoveredState === 'KLIA' ? 'fill-blue-400' : 'fill-blue-500'
+                        }`} 
+                        filter={negeriFilter === 'KLIA' ? 'url(#shadow-glow)' : ''}
+                      />
+                      <circle cx="50" cy="96" r="8" className="fill-none stroke-blue-500/50 stroke-[0.5] animate-ping" />
+                      <text x="46" y="93" fill="#60a5fa" fontSize="5" fontWeight="bold" textAnchor="end">PORT KLIA</text>
+                    </g>
+
+                    {/* Putrajaya dot */}
+                    <g 
+                      className="cursor-pointer"
+                      onMouseEnter={() => setHoveredState('W.P. Putrajaya')}
+                      onMouseLeave={() => setHoveredState(null)}
+                      onClick={() => handleStateClick('W.P. Putrajaya')}
+                    >
+                      <circle 
+                        cx="57" 
+                        cy="96" 
+                        r="2" 
+                        className={`stroke-white stroke-[0.5] transition-all ${
+                          negeriFilter === 'W.P. Putrajaya' || hoveredState === 'W.P. Putrajaya' ? 'fill-amber-400' : 'fill-amber-500'
+                        }`} 
+                      />
+                      <text x="61" y="99" fill="#fbbf24" fontSize="5" fontWeight="bold">Putrajaya</text>
+                    </g>
+                  </svg>
+                </div>
+              </div>
+
+              {/* Side Info Panel */}
+              <div className="lg:col-span-4 flex flex-col justify-between bg-white/5 border border-white/10 rounded-[2rem] p-6 backdrop-blur-md">
+                <div className="space-y-6">
+                  <div>
+                    <span className="text-[9px] font-black uppercase tracking-[0.25em] text-indigo-400">
+                      {displayStats.isHovered ? 'Sedang Dilayur' : 'Status Tapisan'}
+                    </span>
+                    <h4 className="text-xl font-black uppercase tracking-tight text-white mt-1">
+                      {displayStats.name}
+                    </h4>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div className="bg-white/5 border border-white/5 p-4 rounded-2xl">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Jumlah Unjuran Cukai</p>
+                      <p className="text-2xl font-black text-indigo-300 tracking-tight">
+                        RM {displayStats.tax.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </p>
+                    </div>
+
+                    <div className="bg-white/5 border border-white/5 p-4 rounded-2xl">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Jumlah Kenderaan Terlibat</p>
+                      <p className="text-2xl font-black text-white tracking-tight">
+                        {displayStats.units.toLocaleString()} <span className="text-sm font-bold text-slate-400">Unit</span>
+                      </p>
+                    </div>
+
+                    {displayStats.units > 0 && (
+                      <div className="bg-white/5 border border-white/5 p-4 rounded-2xl">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Purata Cukai Seunit</p>
+                        <p className="text-lg font-black text-slate-300 tracking-tight">
+                          RM {(displayStats.tax / displayStats.units).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {negeriFilter !== 'Semua' && (
+                  <button
+                    onClick={() => setNegeriFilter('Semua')}
+                    className="w-full mt-6 bg-white/10 hover:bg-white/15 text-white py-3 rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 border border-white/10 transition-all active:scale-95"
+                  >
+                    <Undo2 className="w-4 h-4" /> Reset Tapisan Negeri
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
           {/* Charts Row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 print:hidden">
             {/* Bar Chart */}
@@ -259,3 +501,4 @@ export const TaxAnalysisView: React.FC = () => {
     </div>
   );
 };
+

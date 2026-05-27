@@ -26,6 +26,8 @@ const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [userEmail, setUserEmail] = useState<string>('');
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [globalFilters, setGlobalFilters] = useState<{ type: 'aging_90' | 'ap_warning' | null } | null>(null);
 
   const [activeTab, setActiveTab] = useState<DashboardTab>(DashboardTab.RINGKASAN);
   const [isIntelligenceOpen, setIsIntelligenceOpen] = useState(false);
@@ -78,15 +80,29 @@ const App: React.FC = () => {
     window.open(`${apiService.getApiUrl()}?action=test`, '_blank');
   };
 
-  const handleGoogleLogin = (e: React.FormEvent) => {
+  const handleGoogleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     const email = (e.currentTarget as any).email.value.toLowerCase().trim();
     setIsAuthenticating(true);
-    setTimeout(() => {
-      setUserEmail(email);
-      setIsAuthenticated(true);
+    setLoginError(null);
+    try {
+      if (isSimulated) {
+        setUserEmail(email);
+        setIsAuthenticated(true);
+      } else {
+        const result = await apiService.verifyLogin(email);
+        if (result && result.status === 'success' && result.allowed) {
+          setUserEmail(email);
+          setIsAuthenticated(true);
+        } else {
+          setLoginError(result?.message || 'Akses Ditolak: Emel tidak tersenarai.');
+        }
+      }
+    } catch (err: any) {
+      setLoginError(err.message || 'Ralat semasa log masuk.');
+    } finally {
       setIsAuthenticating(false);
-    }, 1000);
+    }
   };
 
   // Fix: Added handlers for AdminView whitelist management
@@ -110,13 +126,18 @@ const App: React.FC = () => {
             <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-blue-500/20">
               <ShieldCheck className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-2xl font-black text-white uppercase italic">GBPekema <span className="text-blue-500">v2.5</span></h1>
+            <h1 className="text-2xl font-black text-white uppercase italic">MyPEKEMA APP <span className="text-blue-500">v2.6</span></h1>
           </div>
           <form onSubmit={handleGoogleLogin} className="space-y-6">
             <div className="relative">
               <Mail className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-white/20" />
               <input name="email" type="email" required defaultValue="afandi.amin@customs.gov.my" className="w-full bg-white/5 border border-white/10 rounded-xl pl-12 pr-4 py-4 text-white outline-none focus:ring-2 focus:ring-blue-500" placeholder="emel@customs.gov.my" />
             </div>
+            {loginError && (
+              <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-400 text-xs font-bold text-center">
+                {loginError}
+              </div>
+            )}
             <button type="submit" disabled={isAuthenticating} className="w-full bg-white text-slate-900 py-4 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-100 transition-all">
               {isAuthenticating ? 'Mengesahkan...' : 'Log Masuk'}
             </button>
@@ -144,29 +165,38 @@ const App: React.FC = () => {
         };
         if (map[label]) setActiveTab(map[label]);
         setIsSidebarOpen(false);
-      }} activeTab={activeTab} onLogout={() => setIsAuthenticated(false)} userEmail={userEmail} isSuperAdmin={userEmail === SUPERADMIN_EMAIL} />
+      }} activeTab={activeTab} onLogout={() => setIsAuthenticated(false)} userEmail={userEmail} isSuperAdmin={userEmail === SUPERADMIN_EMAIL} activeYear={activeYear} onYearChange={(year) => { apiService.setYear(year); setActiveYear(year); }} />
 
-      <header className="fixed top-0 w-full z-40 px-6 py-4">
-        <div className="max-w-7xl mx-auto bg-slate-900/90 backdrop-blur-md text-white rounded-full flex items-center justify-between px-6 py-2 shadow-xl border border-white/10">
+      <header className="fixed top-0 w-full z-40 px-4 py-3 sm:px-6 sm:py-4">
+        <div className="max-w-7xl mx-auto bg-slate-900/90 backdrop-blur-md text-white rounded-full flex items-center justify-between px-4 py-2 sm:px-6 sm:py-2 shadow-xl border border-white/10">
           <div className="flex items-center gap-2">
-            <Database className="w-5 h-5 text-blue-500" />
-            <h1 className="font-bold text-sm">GBPekema</h1>
+            <Database className="w-5 h-5 text-blue-500 shrink-0" />
+            <h1 className="font-bold text-xs sm:text-sm hidden min-[360px]:block">MyPEKEMA APP</h1>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
+            {/* Compact status indicator on mobile */}
+            <div className="flex sm:hidden items-center gap-1.5 text-[9px] font-black uppercase bg-slate-800/80 px-2.5 py-1.5 rounded-full border border-white/5 shrink-0">
+              <span className="text-slate-400">{activeYear}</span>
+              <span className="text-slate-600">•</span>
+              <span className={isSimulated ? 'text-amber-400' : 'text-green-400'}>
+                {isSimulated ? 'Demo' : 'Live'}
+              </span>
+            </div>
+
             <select
               value={activeYear}
               onChange={handleYearChange}
-              className="bg-slate-800 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full border-none outline-none cursor-pointer hover:bg-slate-700 transition-colors"
+              className="hidden sm:block bg-slate-800 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full border-none outline-none cursor-pointer hover:bg-slate-700 transition-colors"
             >
               <option value="2025">2025</option>
               <option value="2026">2026</option>
               <option value="Semua">Semua</option>
             </select>
-            <div className="bg-slate-800 p-1 rounded-full flex text-[10px] font-black uppercase">
-              <button onClick={() => { setIsSimulated(false); apiService.setMode(false); checkConnection(); }} className={`px-3 py-1 rounded-full transition-all ${!isSimulated ? 'bg-green-600 text-white shadow-lg' : 'text-slate-500 hover:text-white/10'}`}>Live</button>
-              <button onClick={() => { setIsSimulated(true); apiService.setMode(true); }} className={`px-3 py-1 rounded-full transition-all ${isSimulated ? 'bg-amber-500 text-white shadow-lg' : 'text-slate-500 hover:text-white/10'}`}>Demo</button>
+            <div className="hidden md:flex bg-slate-800 p-1 rounded-full text-[10px] font-black uppercase">
+              <button onClick={() => { setIsSimulated(false); apiService.setMode(false); checkConnection(); }} className={`px-3 py-1 rounded-full transition-all cursor-pointer ${!isSimulated ? 'bg-green-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>Live</button>
+              <button onClick={() => { setIsSimulated(true); apiService.setMode(true); }} className={`px-3 py-1 rounded-full transition-all cursor-pointer ${isSimulated ? 'bg-amber-500 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>Demo</button>
             </div>
-            <button onClick={() => setIsSidebarOpen(true)} className="p-2 hover:bg-white/10 rounded-full transition-colors"><Menu className="w-5 h-5" /></button>
+            <button onClick={() => setIsSidebarOpen(true)} className="p-2 hover:bg-white/10 rounded-full transition-colors cursor-pointer"><Menu className="w-5 h-5" /></button>
           </div>
         </div>
       </header>
@@ -216,11 +246,11 @@ const App: React.FC = () => {
         </div>
 
         {/* Fix: Implement conditional rendering for all dashboard views */}
-        {activeTab === DashboardTab.RINGKASAN && <SummaryView key={`summary-${activeYear}`} onNavigateToVehicles={() => setActiveTab(DashboardTab.KENDERAAN)} onNavigateToVehicleDetail={(lot) => { setSelectedLot(lot); setActiveTab(DashboardTab.REKOD_DETAIL); }} />}
-        {activeTab === DashboardTab.KENDERAAN && <VehicleListView key={`vehicles-${activeYear}`} onSelectLot={(lot) => { setSelectedLot(lot); setActiveTab(DashboardTab.REKOD_DETAIL); }} onAddNew={() => setActiveTab(DashboardTab.TAMBAH_KENDERAAN)} />}
+        {activeTab === DashboardTab.RINGKASAN && <SummaryView key={`summary-${activeYear}`} onNavigateToVehicles={() => { setGlobalFilters(null); setActiveTab(DashboardTab.KENDERAAN); }} onNavigateToVehicleDetail={(lot) => { setSelectedLot(lot); setActiveTab(DashboardTab.REKOD_DETAIL); }} />}
+        {activeTab === DashboardTab.KENDERAAN && <VehicleListView key={`vehicles-${activeYear}`} globalFilters={globalFilters} onClearFilters={() => setGlobalFilters(null)} onSelectLot={(lot) => { setSelectedLot(lot); setActiveTab(DashboardTab.REKOD_DETAIL); }} onAddNew={() => setActiveTab(DashboardTab.TAMBAH_KENDERAAN)} />}
         {activeTab === DashboardTab.REKOD_DETAIL && selectedLot && <VehicleDetailView key={`detail-${activeYear}-${selectedLot}`} lot={selectedLot} onBack={() => setActiveTab(DashboardTab.KENDERAAN)} />}
         {activeTab === DashboardTab.TAMBAH_KENDERAAN && <AddVehicleView key={`add-${activeYear}`} onBack={() => setActiveTab(DashboardTab.KENDERAAN)} />}
-        {activeTab === DashboardTab.INSIGHTS && <InsightsView key={`insights-${activeYear}`} />}
+        {activeTab === DashboardTab.INSIGHTS && <InsightsView key={`insights-${activeYear}`} onNavigateToVehicles={(filters) => { setGlobalFilters(filters); setActiveTab(DashboardTab.KENDERAAN); }} />}
         {activeTab === DashboardTab.AGING && <AgingAnalysisView key={`aging-${activeYear}`} />}
         {activeTab === DashboardTab.SYARIKAT && <CompanyListView key={`company-${activeYear}`} />}
         {activeTab === DashboardTab.CUKAI && <TaxAnalysisView key={`cukai-${activeYear}`} />}

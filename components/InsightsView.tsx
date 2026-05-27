@@ -1,10 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { Brain, Sparkles, Loader2, RefreshCw, Clock, Calendar, Coins, CheckCircle2, Car, BarChart3, TrendingUp, Building2, Gauge, AlertTriangle } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Brain, Sparkles, Loader2, RefreshCw, Clock, Calendar, Coins, CheckCircle2, Car, BarChart3, TrendingUp, Building2, Gauge, AlertTriangle, Send, Zap, Target, Activity, AlertCircle } from 'lucide-react';
 import { apiService } from '../services/apiService.ts';
 
-export const InsightsView: React.FC = () => {
+interface InsightsViewProps {
+  onNavigateToVehicles: (filters: { type: 'aging_90' | 'ap_warning' | null }) => void;
+}
+
+export const InsightsView: React.FC<InsightsViewProps> = ({ onNavigateToVehicles }) => {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
+  const [sendingAp, setSendingAp] = useState<{[key: string]: 'sending' | 'success' | 'error'}>({});
 
   const fetchInsights = async () => {
     setLoading(true);
@@ -15,6 +20,28 @@ export const InsightsView: React.FC = () => {
       console.error(e);
     }
     setLoading(false);
+  };
+
+  const handleSendWarning = async (ap: string, company: string) => {
+    if (!ap) return;
+    setSendingAp(prev => ({ ...prev, [ap]: 'sending' }));
+    try {
+      const res = await apiService.sendWarning(ap, company);
+      if (res && res.status === 'success') {
+        setSendingAp(prev => ({ ...prev, [ap]: 'success' }));
+        setTimeout(() => {
+          setSendingAp(prev => {
+            const next = { ...prev };
+            delete next[ap];
+            return next;
+          });
+        }, 3000);
+      } else {
+        setSendingAp(prev => ({ ...prev, [ap]: 'error' }));
+      }
+    } catch (err) {
+      setSendingAp(prev => ({ ...prev, [ap]: 'error' }));
+    }
   };
 
   useEffect(() => {
@@ -39,7 +66,7 @@ export const InsightsView: React.FC = () => {
             <div className="bg-indigo-500/30 p-2 rounded-xl backdrop-blur-md">
               <Sparkles className="w-5 h-5 text-indigo-200" />
             </div>
-            <span className="text-xs font-black tracking-[0.3em] text-indigo-300 uppercase italic">GBPekema Intelligence Core</span>
+            <span className="text-xs font-black tracking-[0.3em] text-indigo-300 uppercase italic">MyPEKEMA APP Intelligence Core</span>
           </div>
           <h2 className="text-4xl font-black mb-6 leading-tight italic uppercase tracking-tighter">Analisa Pintar Data<br/><span className="text-indigo-400">Gudang & Kewangan</span></h2>
           <p className="text-indigo-100/70 text-lg leading-relaxed mb-8 font-medium">
@@ -53,6 +80,41 @@ export const InsightsView: React.FC = () => {
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
             KEMASKINI ANALISA
           </button>
+        </div>
+      </div>
+
+      {/* Local AI Insights Panel - No API Required */}
+      <div className="bg-gradient-to-r from-slate-900 to-slate-800 rounded-[2rem] p-6 text-white shadow-lg">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="bg-amber-500/20 p-2 rounded-xl">
+            <Zap className="w-5 h-5 text-amber-400" />
+          </div>
+          <h3 className="font-black uppercase tracking-wider text-sm">AI Tempatan (Offline)</h3>
+        </div>
+        <p className="text-xs text-slate-400 mb-4">Analisa automatik tanpa sambungan API - berfungsi di luar talian.</p>
+        
+        {/* Quick Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="bg-white/5 rounded-xl p-3 text-center">
+            <Zap className="w-4 h-4 mx-auto mb-1 text-amber-400" />
+            <p className="text-lg font-black">{apiService.getAnomalyDetection().total}</p>
+            <p className="text-[9px] text-slate-400 uppercase">Anomali</p>
+          </div>
+          <div className="bg-white/5 rounded-xl p-3 text-center">
+            <AlertCircle className="w-4 h-4 mx-auto mb-1 text-rose-400" />
+            <p className="text-lg font-black">{apiService.getAnomalyDetection().critical}</p>
+            <p className="text-[9px] text-slate-400 uppercase">Kritikal</p>
+          </div>
+          <div className="bg-white/5 rounded-xl p-3 text-center">
+            <Target className="w-4 h-4 mx-auto mb-1 text-amber-400" />
+            <p className="text-lg font-black">{apiService.getAnomalyDetection().warning}</p>
+            <p className="text-[9px] text-slate-400 uppercase">Amaran</p>
+          </div>
+          <div className="bg-white/5 rounded-xl p-3 text-center">
+            <Activity className="w-4 h-4 mx-auto mb-1 text-emerald-400" />
+            <p className="text-lg font-black">{apiService.getForecast() || '-'}</p>
+            <p className="text-[9px] text-slate-400 uppercase">Unjuran Bulan Depan</p>
+          </div>
         </div>
       </div>
 
@@ -89,7 +151,10 @@ export const InsightsView: React.FC = () => {
                     <p className="text-lg font-black text-slate-700">{data.aging?.max_days || 0} <span className="text-xs text-slate-400">hari</span></p>
                   </div>
                 </div>
-                <div className="bg-amber-50 p-4 rounded-xl border border-amber-100">
+                <div 
+                  onClick={() => onNavigateToVehicles({ type: 'aging_90' })}
+                  className="bg-amber-50 p-4 rounded-xl border border-amber-100 cursor-pointer hover:scale-[1.02] hover:shadow-md transition-all active:scale-[0.98]"
+                >
                   <p className="text-xs font-bold text-amber-700 uppercase tracking-widest mb-1">Risiko &gt; 90 Hari</p>
                   <p className="text-xl font-black text-amber-600">{data.aging?.over_90_days || 0} Unit</p>
                   <p className="text-[10px] text-amber-700/70 font-medium mt-1 leading-tight">Perlukan perhatian segera bagi mengelakkan penalti gudang.</p>
@@ -104,21 +169,50 @@ export const InsightsView: React.FC = () => {
                 <h3 className="font-black text-slate-800 uppercase tracking-wider text-sm">Tarikh Luput AP</h3>
               </div>
               <div className="flex-1 space-y-5">
-                <div>
+                <div 
+                  onClick={() => onNavigateToVehicles({ type: 'ap_warning' })}
+                  className="bg-rose-50/50 p-4 rounded-xl border border-rose-100 cursor-pointer hover:scale-[1.02] hover:shadow-md transition-all active:scale-[0.98] w-full text-left"
+                >
                   <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Amaran Kritikal (&lt; 30 Hari)</p>
                   <p className="text-3xl font-black text-rose-600">{data.ap?.critical_count || 0} <span className="text-lg text-rose-400">Kenderaan</span></p>
                 </div>
-                <div className="space-y-2 max-h-44 overflow-y-auto pr-2">
+                <div className="space-y-3 max-h-[220px] overflow-y-auto pr-2">
                   {data.ap?.warnings && data.ap.warnings.length > 0 ? (
-                    data.ap.warnings.map((w: any, idx: number) => (
-                      <div key={idx} className="flex justify-between items-center p-2 hover:bg-slate-50 rounded-lg border border-transparent hover:border-slate-100 transition-colors">
-                        <div className="overflow-hidden pr-2">
-                          <p className="text-[11px] font-black text-slate-700 uppercase truncate">{w.lot_number}</p>
-                          <p className="text-[9px] font-bold text-slate-400 uppercase truncate">{w.company}</p>
+                    data.ap.warnings.map((w: any, idx: number) => {
+                      const status = sendingAp[w.ap];
+                      return (
+                        <div key={idx} className="flex flex-col gap-2 p-3 bg-slate-50 hover:bg-slate-100/70 rounded-xl border border-slate-100/50 transition-all">
+                          <div className="flex justify-between items-start">
+                            <div className="overflow-hidden pr-2">
+                              <p className="text-[11px] font-black text-slate-700 uppercase truncate">{w.lot_number}</p>
+                              <p className="text-[9px] font-bold text-slate-400 uppercase truncate">{w.company}</p>
+                              <p className="text-[9px] font-mono text-slate-500 uppercase mt-0.5">AP: {w.ap || 'N/A'}</p>
+                            </div>
+                            <span className="text-[9px] font-black text-rose-600 bg-rose-50 px-2 py-0.5 rounded shrink-0">{w.tarikh_luput}</span>
+                          </div>
+                          
+                          <button 
+                            disabled={status === 'sending' || status === 'success' || !w.ap}
+                            onClick={() => handleSendWarning(w.ap, w.company)}
+                            className={`w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${
+                              status === 'sending'
+                                ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                : status === 'success'
+                                ? 'bg-emerald-500 text-white cursor-default'
+                                : status === 'error'
+                                ? 'bg-rose-600 text-white hover:bg-rose-700'
+                                : 'bg-indigo-600 text-white hover:bg-indigo-700 active:scale-95'
+                            }`}
+                          >
+                            {status === 'sending' && <Loader2 className="w-3 h-3 animate-spin" />}
+                            {status === 'success' && <CheckCircle2 className="w-3.5 h-3.5" />}
+                            {status === 'error' && <AlertTriangle className="w-3 h-3" />}
+                            {!status && <Send className="w-2.5 h-2.5" />}
+                            {status === 'sending' ? 'Menghantar...' : status === 'success' ? 'Amaran Dihantar' : status === 'error' ? 'Gagal Hantar' : 'Hantar Peringatan'}
+                          </button>
                         </div>
-                        <p className="text-[10px] font-black text-rose-600 bg-rose-50 px-2 py-1 rounded-md shrink-0">{w.tarikh_luput}</p>
-                      </div>
-                    ))
+                      );
+                    })
                   ) : (
                     <div className="flex items-center gap-2 text-emerald-600 bg-emerald-50 p-3 rounded-lg text-xs font-bold">
                       <CheckCircle2 className="w-4 h-4" /> Tiada AP Luput dikesan

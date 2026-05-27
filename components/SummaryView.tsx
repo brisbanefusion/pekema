@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { StatsCard } from './StatsCard.tsx';
 import { COLORS } from '../constants.tsx';
+// Fix: Added missing apiService import path verification
 import { apiService, apiStatus } from '../services/apiService.ts';
 
 interface SummaryViewProps {
@@ -19,21 +20,24 @@ export const SummaryView: React.FC<SummaryViewProps> = ({ onNavigateToVehicles, 
   const [stats, setStats] = useState<any>(null);
   const [dominanceData, setDominanceData] = useState<any[]>([]);
   const [activityLog, setActivityLog] = useState<any[]>([]);
+  const [vehicles, setVehicles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<string>(new Date().toLocaleTimeString());
 
   const loadAllData = async (showLoader = true) => {
     if (showLoader) setLoading(true);
     try {
-      const [statsRes, dominanceRes, activityRes] = await Promise.all([
+      const [statsRes, dominanceRes, activityRes, vehiclesRes] = await Promise.all([
         apiService.getSummaryStats(),
         apiService.getDominanceData(),
-        apiService.getActivityLog()
+        apiService.getActivityLog(),
+        apiService.getVehicles()
       ]);
 
       setStats(statsRes);
       setDominanceData(Array.isArray(dominanceRes) ? dominanceRes : []);
       setActivityLog(Array.isArray(activityRes) ? activityRes : []);
+      setVehicles(Array.isArray(vehiclesRes) ? vehiclesRes : []);
       setLastUpdated(new Date().toLocaleTimeString());
     } catch (err) {
       console.error("Dashboard Load Error:", err);
@@ -68,6 +72,77 @@ export const SummaryView: React.FC<SummaryViewProps> = ({ onNavigateToVehicles, 
   const safeDominance = Array.isArray(dominanceData) ? dominanceData : [];
   const safeActivity = Array.isArray(activityLog) ? activityLog : [];
   const totalUnits = safeDominance.reduce((acc, curr) => acc + (Number(curr.value) || 0), 0);
+
+  // Function to calculate lot occupancy & aging status
+  const getLotStatus = (lotNo: string) => {
+    const v = vehicles.find(item => item.lot === lotNo);
+    if (!v) {
+      return { 
+        status: 'empty', 
+        colorClass: 'bg-slate-900/40 text-slate-500 border-white/5 hover:border-slate-800', 
+        label: 'Kosong', 
+        data: null, 
+        days: 0 
+      };
+    }
+    
+    if (!v.raw_date) {
+      return { 
+        status: 'new', 
+        colorClass: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25', 
+        label: 'Baru', 
+        data: v, 
+        days: 5 
+      };
+    }
+    
+    const bondIn = new Date(v.raw_date);
+    const today = new Date();
+    const diffTime = today.getTime() - bondIn.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays > 90) {
+      return { 
+        status: 'critical', 
+        colorClass: 'bg-rose-500/20 text-rose-400 border-rose-500/30 animate-pulse', 
+        label: `Kritikal (${diffDays} Hari)`, 
+        data: v, 
+        days: diffDays 
+      };
+    }
+    if (diffDays >= 30) {
+      return { 
+        status: 'medium', 
+        colorClass: 'bg-amber-500/20 text-amber-400 border-amber-500/30', 
+        label: `Sederhana (${diffDays} Hari)`, 
+        data: v, 
+        days: diffDays 
+      };
+    }
+    return { 
+      status: 'new', 
+      colorClass: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30', 
+      label: `Baru (${diffDays} Hari)`, 
+      data: v, 
+      days: diffDays 
+    };
+  };
+
+  const get3DStyles = (lotInfo: any) => {
+    if (lotInfo.status === 'empty') {
+      return {
+        transform: 'translateZ(0px)',
+        transformStyle: 'preserve-3d' as const,
+        boxShadow: '0 0 0 rgba(0,0,0,0)'
+      };
+    }
+    const zHeight = lotInfo.status === 'critical' ? 24 : lotInfo.status === 'medium' ? 14 : 6;
+    return {
+      transform: `translateZ(${zHeight}px)`,
+      transformStyle: 'preserve-3d' as const,
+      boxShadow: `0 ${zHeight}px 20px rgba(0, 0, 0, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.15)`
+    };
+  };
 
   return (
     <>
@@ -130,6 +205,110 @@ export const SummaryView: React.FC<SummaryViewProps> = ({ onNavigateToVehicles, 
           icon={<Activity className="w-6 h-6 text-white" />}
           colorClass="bg-amber-500 shadow-lg shadow-amber-500/20"
         />
+      </div>
+
+      {/* Visualisasi Lot Gudang (Interactive Stock Grid 3D) */}
+      <div className="bg-slate-950 border border-white/10 p-8 rounded-[2.5rem] shadow-2xl text-white mb-10 overflow-hidden relative print:hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(79,70,229,0.12),transparent)] pointer-events-none"></div>
+        
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 relative z-10">
+          <div>
+            <h3 className="text-sm font-black text-indigo-300 uppercase tracking-widest flex items-center gap-2">
+              <Warehouse className="w-4 h-4" /> Visualisasi Lot Gudang 3D
+            </h3>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1">
+              Bongkah isometric 3D melambangkan ketinggian Z mengikut tempoh aging stok (volumetric heatmap).
+            </p>
+          </div>
+          
+          {/* Legend */}
+          <div className="flex flex-wrap gap-4 text-[9px] font-black uppercase tracking-wider">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 bg-emerald-500/20 border border-emerald-500/30 rounded"></span>
+              <span className="text-emerald-400">Baru (&lt; 30 Hari)</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 bg-amber-500/20 border border-amber-500/30 rounded"></span>
+              <span className="text-amber-400">Sederhana (30 - 90 Hari)</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 bg-rose-500/20 border border-rose-500/30 rounded"></span>
+              <span className="text-rose-400">Kritikal (&gt; 90 Hari)</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 bg-slate-800 border border-slate-700 rounded"></span>
+              <span className="text-slate-400">Lot Kosong</span>
+            </div>
+          </div>
+        </div>
+
+        {/* 3D Isometric Viewport Container */}
+        <div 
+          className="flex items-center justify-center py-6 min-h-[340px]"
+          style={{ perspective: '1200px' }}
+        >
+          <div 
+            className="grid grid-cols-4 gap-6 p-8 bg-slate-900/40 rounded-3xl border border-white/5 shadow-2xl relative"
+            style={{ 
+              transform: 'rotateX(55deg) rotateY(0deg) rotateZ(-40deg)', 
+              transformStyle: 'preserve-3d',
+              width: '100%',
+              maxWidth: '560px'
+            }}
+          >
+            {/* Ambient floor lines */}
+            <div className="absolute inset-0 border border-indigo-500/5 rounded-3xl pointer-events-none" style={{ transform: 'translateZ(-1px)' }}></div>
+            
+            {['LOT-A1', 'LOT-A2', 'LOT-A3', 'LOT-A4', 'LOT-A5', 'LOT-A6', 'LOT-A7', 'LOT-A8', 'LOT-B1', 'LOT-B2', 'LOT-B3', 'LOT-B4'].map((lotId) => {
+              const lotInfo = getLotStatus(lotId);
+              const volumetricStyle = get3DStyles(lotInfo);
+              return (
+                <div 
+                  key={lotId}
+                  onClick={() => {
+                    if (lotInfo.data && onNavigateToVehicleDetail) {
+                      onNavigateToVehicleDetail(lotInfo.data.lot);
+                    }
+                  }}
+                  style={volumetricStyle}
+                  className={`relative border rounded-xl p-4 flex flex-col items-center justify-center transition-all duration-300 group ${lotInfo.colorClass} ${
+                    lotInfo.status !== 'empty' 
+                      ? 'cursor-pointer hover:scale-105 hover:bg-white/10 active:scale-95' 
+                      : 'cursor-default'
+                  }`}
+                >
+                  <span className="text-xs font-black tracking-tight">{lotId.replace('LOT-', '')}</span>
+                  <span className="text-[8px] font-bold uppercase mt-1 opacity-60">
+                    {lotInfo.status === 'empty' ? 'Kosong' : `${lotInfo.days}H`}
+                  </span>
+
+                  {/* Hover Tooltip Popup (Reverses 3D transforms for camera focus) */}
+                  {lotInfo.data && (
+                    <div 
+                      style={{ 
+                        transform: 'rotateZ(40deg) rotateX(-55deg) translateZ(60px)', 
+                        transformStyle: 'preserve-3d'
+                      }}
+                      className="absolute z-50 bottom-full mb-4 hidden group-hover:block w-56 p-4 bg-slate-950/95 border border-white/15 rounded-2xl shadow-2xl text-left pointer-events-none"
+                    >
+                      <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Maklumat Kenderaan</p>
+                      <h5 className="text-[11px] font-black text-white uppercase mt-1 truncate">{lotInfo.data.model}</h5>
+                      <p className="text-[9px] text-slate-400 font-bold truncate mt-0.5">{lotInfo.data.company}</p>
+                      <div className="mt-2.5 pt-2.5 border-t border-white/10 flex justify-between items-center text-[9px] font-bold text-slate-500">
+                        <span>Tempoh</span>
+                        <span className={`px-2 py-0.5 rounded uppercase font-black ${
+                          lotInfo.status === 'critical' ? 'bg-rose-500/10 text-rose-400' : lotInfo.status === 'medium' ? 'bg-amber-500/10 text-amber-400' : 'bg-emerald-500/10 text-emerald-400'
+                        }`}>
+                          {lotInfo.days} Hari
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
